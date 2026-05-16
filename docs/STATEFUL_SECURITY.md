@@ -33,6 +33,7 @@ Evaluates how closely subsequent actions match the session's initially declared 
 ### 3. Risk Budget Engine (`core/risk_budget.py`)
 Assigns a "risk budget" to each session. Risky actions (e.g., new external domains, pipeline flags) deduct from this budget based on configurable costs.
 - Triggers an `ESCALATE` intervention if the budget is exhausted.
+- Flips the session's status to `PAUSED` when this happens. The orchestrator rejects further `detect_with_session` calls on a non-`ACTIVE` session (HTTP layer maps to `409 Conflict`), so a single exhausted session cannot keep deducting budget on subsequent calls — human review is required before proceeding.
 - Highly configurable via `SessionSettings`, allowing budget overrides per-session or cost tweaking per-category.
 
 ### 4. Incident Reporter (`core/incident_reporter.py`)

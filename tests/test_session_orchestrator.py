@@ -15,7 +15,7 @@ import pytest
 from core.incident_reporter import IncidentReporter
 from core.intent_scorer import DriftLevel, DriftResult
 from core.risk_budget import RiskBudgetEngine
-from core.session import InMemorySessionStore
+from core.session import InMemorySessionStore, SessionNotActiveError, SessionStatus
 from core.session_orchestrator import SessionDetectResult, SessionOrchestrator
 from core.session_settings import SessionSettings
 from models.verdicts import FinalVerdict, InputProvenance, Intervention
@@ -387,3 +387,35 @@ def test_full_session_lifecycle_with_near_miss(orchestrator, mock_pipeline, mock
     # Report is serializable
     json_str = report.model_dump_json()
     assert session_id in json_str
+
+
+# ── Detect gated on session status ──────────────────────────────────────
+
+
+def test_detect_rejected_on_paused_session(orchestrator, mock_pipeline, mock_scorer):
+    """A PAUSED session (budget-exhausted) must not accept further detects."""
+    session_id = orchestrator.start_session("test", risk_budget=1)
+
+    # Force budget exhaustion on the first detect: pipeline_flag (cost 1) +
+    # high_intent_drift (cost 1) > budget (1) → status flipped to PAUSED.
+    mock_pipeline.set_next_verdict("block")
+    mock_scorer.set_next_drift(0.60)
+    orchestrator.detect_with_session(session_id, "first call exhausts budget")
+
+    summary = orchestrator.get_session_summary(session_id)
+    assert summary["status"] == SessionStatus.PAUSED.value
+
+    # Subsequent detects must be rejected, not silently allowed.
+    with pytest.raises(SessionNotActiveError) as excinfo:
+        orchestrator.detect_with_session(session_id, "subsequent call")
+    assert excinfo.value.status == SessionStatus.PAUSED
+
+
+def test_detect_rejected_on_completed_session(orchestrator):
+    """Detects on a COMPLETED (closed) session must be rejected."""
+    session_id = orchestrator.start_session("test")
+    orchestrator.end_session(session_id)
+
+    with pytest.raises(SessionNotActiveError) as excinfo:
+        orchestrator.detect_with_session(session_id, "after end")
+    assert excinfo.value.status == SessionStatus.COMPLETED

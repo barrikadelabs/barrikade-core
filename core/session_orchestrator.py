@@ -20,6 +20,8 @@ from core.risk_budget import RiskAssessment, RiskBudgetEngine, RiskCategory
 from core.session import (
     SessionEvent,
     SessionEventType,
+    SessionNotActiveError,
+    SessionStatus,
     SessionStoreBackend,
 )
 from core.session_settings import SessionSettings
@@ -151,6 +153,15 @@ class SessionOrchestrator:
         session = self._store.get_session(session_id)
         if session is None:
             raise KeyError(f"Session {session_id} not found")
+
+        # Reject detects on non-active sessions. PAUSED means a prior call
+        # exhausted the risk budget and the doc-stated policy is to require
+        # human review before proceeding; COMPLETED/HALTED sessions are
+        # closed for any further activity. Without this gate the orchestrator
+        # would keep running detection on a paused session and the risk
+        # budget would drift further negative on each call.
+        if session.status != SessionStatus.ACTIVE:
+            raise SessionNotActiveError(session_id, session.status)
 
         now = datetime.now(timezone.utc)
 

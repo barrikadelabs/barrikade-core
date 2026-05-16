@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from core.orchestrator import PIPipeline
+from core.session import SessionNotActiveError
 from core.session_orchestrator import SessionOrchestrator, create_session_orchestrator
 from core.session_settings import SessionSettings
 from core.settings import Settings
@@ -252,6 +253,8 @@ def session_detect(session_id: str, payload: SessionDetectRequest):
         )
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    except SessionNotActiveError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         log.exception("Session detection failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc

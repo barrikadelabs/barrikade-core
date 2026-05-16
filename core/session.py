@@ -52,6 +52,22 @@ class SessionStatus(str, Enum):
     HALTED = "halted"          # Stopped by an intervention
 
 
+class SessionNotActiveError(RuntimeError):
+    """Raised when a detect/mutate call is made on a session that is no longer active.
+
+    The session's current status is exposed as ``status`` so callers (e.g. the
+    HTTP layer) can map it to an appropriate response.
+    """
+
+    def __init__(self, session_id: str, status: "SessionStatus"):
+        self.session_id = session_id
+        self.status = status
+        super().__init__(
+            f"Session {session_id} is not active (status={status.value}); "
+            "human review or a new session is required before proceeding."
+        )
+
+
 #Data Classes
 
 
