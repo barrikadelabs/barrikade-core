@@ -6,7 +6,6 @@ verify the incident report marks it as a near-miss, verify budget was
 decremented.
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -20,9 +19,13 @@ from core.session_orchestrator import SessionDetectResult, SessionOrchestrator
 from core.session_settings import SessionSettings
 from models.verdicts import FinalVerdict, InputProvenance, Intervention
 
-# Skip if runtime artifacts aren't available (avoids downloading in CI)
-if os.getenv("BARRIKADA_AUTO_DOWNLOAD_ARTIFACTS", "1") == "0":
-    pytest.skip("Auto-download disabled for tests.", allow_module_level=True)
+# Note: these tests use MockPipeline / MockIntentScorer fixtures (defined
+# below) and never touch the real Layer B/C/D/E artifacts or the
+# all-MiniLM-L6-v2 intent embedding model. A previous module-level skip
+# gated on BARRIKADA_AUTO_DOWNLOAD_ARTIFACTS was over-broad — the tests
+# don't require any artifacts and were silently being skipped in the
+# default pytest run because tests/conftest.py sets that env var to "0"
+# as a CI-safety default. Removed.
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────
