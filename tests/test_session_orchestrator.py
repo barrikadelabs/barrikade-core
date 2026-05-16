@@ -198,6 +198,32 @@ def test_high_drift_triggers_budget_deduction(orchestrator, mock_scorer, mock_pi
     assert result.risk_assessment.budget_remaining == 4
 
 
+def test_critical_drift_escalates_regardless_of_budget(
+    orchestrator, mock_scorer, mock_pipeline,
+):
+    """CRITICAL drift must force ESCALATE even when budget remains.
+
+    Pre-fix: a single critical-drift event passed through with
+    intervention=NONE as long as the session had budget remaining.
+    """
+    # Large budget so we know exhaustion isn't what's driving the escalate.
+    session_id = orchestrator.start_session("Summarise report", risk_budget=100)
+    mock_pipeline.set_next_verdict("allow")
+    mock_scorer.set_next_drift(0.60)  # Above block threshold → CRITICAL
+
+    result = orchestrator.detect_with_session(session_id, "completely unrelated action")
+
+    assert result.drift is not None
+    assert result.drift.risk_level == DriftLevel.CRITICAL
+    # Budget is fine — escalation is purely the drift policy.
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.budget_remaining > 0
+    assert result.intervention == Intervention.ESCALATE
+    # Session is paused pending human review.
+    summary = orchestrator.get_session_summary(session_id)
+    assert summary["status"] == "paused"
+
+
 # ── External Domain Tracking ───────────────────────────────────────────
 
 

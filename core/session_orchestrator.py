@@ -14,7 +14,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.incident_reporter import IncidentReporter
-from core.intent_scorer import DriftResult, IntentDeviationScorer
+from core.intent_scorer import DriftLevel, DriftResult, IntentDeviationScorer
 from core.orchestrator import PIPipeline
 from core.risk_budget import RiskAssessment, RiskBudgetEngine, RiskCategory
 from core.session import (
@@ -287,6 +287,43 @@ class SessionOrchestrator:
                         provenance=provenance,
                     ),
                 )
+
+        # 6. Drift-severity override.
+        # CRITICAL drift (>= intent_drift_block_threshold) is a hard policy
+        # signal that requires human review regardless of remaining budget.
+        # Before this, a single CRITICAL-drift event passed through with
+        # intervention=NONE as long as the session had budget remaining —
+        # the doc's emphasis on severity bands implied otherwise.
+        if drift.risk_level == DriftLevel.CRITICAL and intervention == Intervention.NONE:
+            intervention = Intervention.ESCALATE
+            self._store.set_session_status(session_id, SessionStatus.PAUSED)
+            log.warning(
+                "Session %s: CRITICAL drift (%.3f) — escalating regardless of budget",
+                session_id,
+                drift.drift_score,
+            )
+            self._store.append_event(
+                session_id,
+                SessionEvent(
+                    event_id=uuid4().hex[:12],
+                    event_type=SessionEventType.INTERVENTION,
+                    timestamp=now,
+                    data={
+                        "intervention": intervention.value,
+                        "reason": (
+                            f"Intent drift {drift.drift_score:.3f} reached "
+                            f"CRITICAL level (>= block threshold). "
+                            "Mandatory human review required before proceeding."
+                        ),
+                        "trigger": "critical_drift",
+                        "details": {
+                            "drift_score": drift.drift_score,
+                            "drift_level": drift.risk_level.value,
+                        },
+                    },
+                    provenance=provenance,
+                ),
+            )
 
         return SessionDetectResult(
             pipeline_result=result_dict,

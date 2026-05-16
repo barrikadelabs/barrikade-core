@@ -29,6 +29,7 @@ Persists `WorkloadSession` objects containing a structured event log of the agen
 Evaluates how closely subsequent actions match the session's initially declared intent.
 - Uses `all-MiniLM-L6-v2` as a dedicated general-purpose embedding model instead of the fine-tuned Layer B model, ensuring the embedding space faithfully represents semantic closeness rather than attack/benign discrimination.
 - The model is loaded lazily only when session features are used, preserving the performance of the stateless pipeline.
+- Drift level `CRITICAL` (score >= `intent_drift_block_threshold`) is treated as a hard policy signal: the orchestrator forces `ESCALATE` and pauses the session regardless of remaining risk budget. Drift level `HIGH` continues to deduct from the budget through the normal `HIGH_INTENT_DRIFT` risk category — only `CRITICAL` short-circuits the budget logic.
 
 ### 3. Risk Budget Engine (`core/risk_budget.py`)
 Assigns a "risk budget" to each session. Risky actions (e.g., new external domains, pipeline flags) deduct from this budget based on configurable costs.
