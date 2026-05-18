@@ -37,7 +37,7 @@ Set `BARRIKADA_SKIP_IMPORT_BUNDLE_CHECK=1` to skip the import-time fetch.
 
 Manual downloads:
 ```bash
-python scripts/gcs_download.py --bucket barrikade-bundles
+python scripts/bundling/gcs_download.py --bucket barrikade-bundles
 python scripts/download_qwen3guard.py
 ```
 

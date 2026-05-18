@@ -10,8 +10,8 @@ These tests verify the detection helper and the live integration via
 LayerDClassifier() against the canonical artifacts.
 
 Skipped if the real Layer D artifacts aren't present locally (run
-scripts/gcs_download.py to populate core/models/layer_d/, then
-scripts/export_layer_d_onnx.py to produce the ONNX sibling).
+scripts/bundling/gcs_download.py to populate core/models/layer_d/, then
+core/layer_d/export_layer_d_onnx.py to produce the ONNX sibling).
 """
 import sys
 from pathlib import Path
@@ -98,11 +98,11 @@ def test_layer_d_prefers_onnx_when_available():
     the ONNX backend. Skipped if the real artifacts aren't on disk locally."""
     if not ONNX_DIR.exists():
         pytest.skip(
-            f"missing {ONNX_DIR} -- run scripts/export_layer_d_onnx.py"
+            f"missing {ONNX_DIR} -- run core/layer_d/export_layer_d_onnx.py"
         )
     if not MODEL_DIR.exists():
         pytest.skip(
-            f"missing layer_d model dir {MODEL_DIR} -- run scripts/gcs_download.py"
+            f"missing layer_d model dir {MODEL_DIR} -- run scripts/bundling/gcs_download.py"
         )
 
     clf = LayerDClassifier(model_dir=str(MODEL_DIR))

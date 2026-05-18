@@ -202,7 +202,7 @@ class SessionStoreBackend(ABC):
         ...
 
 
-#In-Memory Implementation ───────────────────────────────────────────
+#In-Memory Implementation
 
 
 class InMemorySessionStore(SessionStoreBackend):
@@ -227,7 +227,7 @@ class InMemorySessionStore(SessionStoreBackend):
         self._sessions: dict[str, WorkloadSession] = {}
         self._lock = threading.Lock()
 
-    #helpers ──
+    #helpers
 
     def _is_expired(self, session: WorkloadSession) -> bool:
         age = (datetime.now(timezone.utc) - session.created_at).total_seconds()

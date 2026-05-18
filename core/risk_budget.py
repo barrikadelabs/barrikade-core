@@ -99,6 +99,7 @@ class RiskBudgetEngine:
         session_store: SessionStoreBackend,
         settings: SessionSettings | None = None,
     ) -> None:
+    
         self._store = session_store
         self._settings = settings or SessionSettings()
 

@@ -83,7 +83,7 @@ class SessionOrchestrator:
         self._reporter = incident_reporter
         self._settings = settings or SessionSettings()
 
-    # ── Session Lifecycle ───────────────────────────────────────────
+    #Session Lifecycle
 
     def start_session(
         self,
@@ -291,9 +291,6 @@ class SessionOrchestrator:
         # 6. Drift-severity override.
         # CRITICAL drift (>= intent_drift_block_threshold) is a hard policy
         # signal that requires human review regardless of remaining budget.
-        # Before this, a single CRITICAL-drift event passed through with
-        # intervention=NONE as long as the session had budget remaining —
-        # the doc's emphasis on severity bands implied otherwise.
         if drift.risk_level == DriftLevel.CRITICAL and intervention == Intervention.NONE:
             intervention = Intervention.ESCALATE
             self._store.set_session_status(session_id, SessionStatus.PAUSED)

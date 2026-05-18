@@ -5,8 +5,6 @@ captures the complete context of a workload session for audit, compliance,
 and near-miss analysis.
 """
 
-from __future__ import annotations
-
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -15,8 +13,7 @@ from uuid import uuid4
 from core.session import (
     SessionEvent,
     SessionEventType,
-    SessionStoreBackend,
-    WorkloadSession,
+    SessionStoreBackend
 )
 from models.incident_report import (
     DriftEventRecord,

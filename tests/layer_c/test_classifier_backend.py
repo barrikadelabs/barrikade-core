@@ -11,8 +11,8 @@ prefers the ONNX backend when present. This test verifies:
      verdict — allow/flag/block — must match).
 
 Skipped if the real Layer C model artifacts aren't present locally (run
-scripts/gcs_download.py to populate core/models/layer_c/, then
-scripts/export_layer_c_onnx.py to produce the .onnx sibling).
+scripts/bundling/gcs_download.py to populate core/models/layer_c/, then
+core/layer_c/export_layer_c_onnx.py to produce the .onnx sibling).
 """
 import shutil
 import sys
@@ -39,9 +39,9 @@ SAMPLE_INPUTS = [
 
 def test_layer_c_classifier_onnx_backend(tmp_path):
     if not JOBLIB_PATH.exists():
-        pytest.skip(f"missing {JOBLIB_PATH} — run scripts/gcs_download.py")
+        pytest.skip(f"missing {JOBLIB_PATH} — run scripts/bundling/gcs_download.py")
     if not ONNX_PATH.exists():
-        pytest.skip(f"missing {ONNX_PATH} — run scripts/export_layer_c_onnx.py")
+        pytest.skip(f"missing {ONNX_PATH} — run core/layer_c/export_layer_c_onnx.py")
 
     # 1. ONNX backend is auto-selected when classifier.onnx is alongside the joblib.
     clf_onnx = Classifier(model_path=str(JOBLIB_PATH))
@@ -78,9 +78,9 @@ def test_layer_c_onnx_path_works_without_classifier_joblib(tmp_path):
     calibrator.joblib (no classifier.joblib) and verifies the Classifier
     constructs and predicts."""
     if not ONNX_PATH.exists():
-        pytest.skip(f"missing {ONNX_PATH} — run scripts/export_layer_c_onnx.py")
+        pytest.skip(f"missing {ONNX_PATH} — run core/layer_c/export_layer_c_onnx.py")
     if not CALIBRATOR_PATH.exists():
-        pytest.skip(f"missing {CALIBRATOR_PATH} — run scripts/export_layer_c_onnx.py")
+        pytest.skip(f"missing {CALIBRATOR_PATH} — run core/layer_c/export_layer_c_onnx.py")
 
     shutil.copy2(ONNX_PATH, tmp_path / "classifier.onnx")
     shutil.copy2(CALIBRATOR_PATH, tmp_path / "calibrator.joblib")
@@ -175,11 +175,11 @@ def test_layer_c_prefers_onnx_encoder_when_available():
     artifacts aren't on disk locally."""
     if not ENCODER_ONNX_DIR.exists():
         pytest.skip(
-            f"missing {ENCODER_ONNX_DIR} -- run scripts/export_layer_c_encoder_onnx.py"
+            f"missing {ENCODER_ONNX_DIR} -- run core/layer_c/export_layer_c_encoder_onnx.py"
         )
     if not JOBLIB_PATH.exists():
         pytest.skip(
-            f"missing layer_c artifacts in {JOBLIB_PATH.parent} -- run scripts/gcs_download.py"
+            f"missing layer_c artifacts in {JOBLIB_PATH.parent} -- run scripts/bundling/gcs_download.py"
         )
 
     clf = Classifier(model_path=str(JOBLIB_PATH))

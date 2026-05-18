@@ -77,6 +77,7 @@ class IntentDeviationScorer:
         settings: SessionSettings | None = None,
         model: "SentenceTransformer | None" = None,
     ) -> None:
+    
         self._settings = settings or SessionSettings()
         self._model: SentenceTransformer | None = model
         self._model_name = self._settings.intent_embedding_model
