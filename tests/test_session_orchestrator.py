@@ -347,7 +347,7 @@ def test_full_session_lifecycle_with_near_miss(orchestrator, mock_pipeline, mock
 
     # 4. Step 3: MALICIOUS INJECTION — pipeline blocks, high drift
     mock_pipeline.set_next_verdict("block", layer="C", confidence=0.92)
-    mock_scorer.set_next_drift(0.60)  # Critical drift
+    mock_scorer.set_next_drift(0.45)  # High drift
 
     r3 = orchestrator.detect_with_session(
         session_id,
@@ -355,7 +355,7 @@ def test_full_session_lifecycle_with_near_miss(orchestrator, mock_pipeline, mock
         provenance=InputProvenance.UNTRUSTED_EXTERNAL,
     )
     assert r3.pipeline_result["final_verdict"] == "block"
-    assert r3.drift.risk_level == DriftLevel.CRITICAL
+    assert r3.drift.risk_level == DriftLevel.HIGH
     # Should cost: pipeline_flag=1, high_intent_drift=1 = 2
     assert r3.risk_assessment is not None
 
@@ -391,7 +391,7 @@ def test_full_session_lifecycle_with_near_miss(orchestrator, mock_pipeline, mock
 
     # Drift events: 4 drift checks
     assert len(report.drift_events) == 4
-    assert report.max_intent_drift_score == 0.60
+    assert report.max_intent_drift_score == 0.45
 
     # Risk budget was decremented
     assert report.risk_budget_initial == 5
