@@ -81,7 +81,7 @@ class SignatureEngine:
         # the PT prompt_encoder. On CPU (production deployment target),
         # SentenceTransformer with backend="onnx" runs ~2.5x faster per
         # single-sample request than the PT path. Produced by
-        # scripts/export_layer_b_onnx.py.
+        # core/layer_b/export_layer_b_onnx.py.
         #
         # onnxruntime's execution provider handles device selection
         # internally, so we don't pass device= when using backend="onnx".
@@ -190,6 +190,11 @@ class SignatureEngine:
         distances, ids = index.kneighbors(query, n_neighbors=k)
         scores = 1.0 - distances
         return scores.astype(np.float32), ids.astype(np.int64)
+
+    @property
+    def embedding_model(self) -> SentenceTransformer:
+        """Expose the loaded encoder for reuse by other components."""
+        return self.model
 
     # embedding helper
     def _embed(self, text):

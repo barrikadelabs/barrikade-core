@@ -6,7 +6,7 @@ centralized core/models/ directory tree, organizing them by layer with support f
 versioning via archives.
 
 Usage:
-    python scripts/bundle_models.py [--dry-run] [--archive-old]
+    python scripts/bundling/bundle_models.py [--dry-run] [--archive-old]
     
     --dry-run:       Show what would be bundled without making changes
     --archive-old:   Move current models to archives before bundling new ones
@@ -18,7 +18,7 @@ import json
 import logging
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -273,7 +273,7 @@ def generate_bundle_manifest(
     """Generate a manifest for the bundled models (SDK download format)."""
     manifest = {
         "bundle_version": bundle_version,
-        "created_at_utc": datetime.utcnow().isoformat() + "Z",
+        "created_at_utc": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         "files": [],
     }
 

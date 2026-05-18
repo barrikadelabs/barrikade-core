@@ -56,6 +56,9 @@ include-package-data = false
 include = ["barrikade", "core", "core.*", "models", "models.*"]
 exclude = ["tests", "tests.*", "docs", "docs.*", "examples", "examples.*", "demos", "demos.*"]
 
+[tool.pyrefly]
+search_path = ["venv/lib/python3.11/site-packages"]
+
 [tool.pytest.ini_options]
 # Adds the repo root to sys.path during pytest discovery so tests can
 # `from core.X import ...` without needing `PYTHONPATH=.` set externally.

@@ -17,7 +17,7 @@ pip install -r requirements.txt
 Manual downloads:
 
 ```bash
-python scripts/gcs_download.py --bucket barrikade-bundles
+python scripts/bundling/gcs_download.py --bucket barrikade-bundles
 python scripts/download_qwen3guard.py
 ```
 
@@ -29,7 +29,7 @@ Runtime models and datasets are distributed via the `barrikade-bundles` Google C
 - No credentials needed for download (public read access)
 - The SDK auto-fetches the bundle on first import of `barrikade`
 - Docker containers auto-download at startup via `docker_entrypoint.sh`
-- Manual downloads via `scripts/gcs_download.py` (full bundle) and `scripts/download_qwen3guard.py` (Layer E only)
+- Manual downloads via `scripts/bundling/gcs_download.py` (full bundle) and `scripts/download_qwen3guard.py` (Layer E only)
 
 For complete documentation, see `docs/MODEL_HOSTING.md`.
 

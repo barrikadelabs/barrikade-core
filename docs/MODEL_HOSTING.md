@@ -67,10 +67,10 @@ python scripts/download_qwen3guard.py
 mkdir -p core/models/{layer_b,layer_c,layer_d,layer_e}/archives
 
 # If you already have local models in layer_*/outputs/, bundle them:
-python scripts/bundle_models.py --manifest core/models/manifest.json
+python scripts/bundling/bundle_models.py --manifest core/models/manifest.json
 
 # Validate bundled models:
-python scripts/validate_models.py --verbose
+python scripts/bundling/validate_models.py --verbose
 ```
 
 ### 3. Upload Models to GCS (First Time)
@@ -82,13 +82,13 @@ python scripts/validate_models.py --verbose
 **Bundle any new models** from layer outputs:
 
 ```bash
-python scripts/bundle_models.py --archive-old --manifest core/models/manifest.json
+python scripts/bundling/bundle_models.py --archive-old --manifest core/models/manifest.json
 ```
 
 **Upload to GCS**:
 
 ```bash
-python scripts/gcs_upload.py \
+python scripts/bundling/gcs_upload.py \
     --bucket barrikade-bundles 
 ```
 
@@ -113,7 +113,7 @@ gs://barrikade-bundles/models/layer_b/archives/backup_YYYYMMDD_HHMMSS/
 
 ```bash
 # Download latest models from GCS to local core/models/
-python scripts/gcs_download.py \
+python scripts/bundling/gcs_download.py \
     --bucket barrikade-bundles \
     --archive-old \
     --validate
@@ -129,13 +129,13 @@ python -c "from core.orchestrator import PIPipeline; p = PIPipeline()"
 # Output goes to core/layer_c/outputs/
 
 # Bundle the trained model into core/models/
-python scripts/bundle_models.py --archive-old
+python scripts/bundling/bundle_models.py --archive-old
 
 # Upload to GCS
-python scripts/gcs_upload.py --bucket barrikade-models
+python scripts/bundling/gcs_upload.py --bucket barrikade-models
 
 # Other team members can now download:
-python scripts/gcs_download.py --bucket barrikade-models
+python scripts/bundling/gcs_download.py --bucket barrikade-models
 ```
 
 ### Workflow 3: Revert to Previous Model Version
@@ -144,10 +144,10 @@ Models are automatically archived when new versions are uploaded. To use an olde
 
 ```bash
 # List available archived versions locally
-python scripts/model_status.py --bucket barrikade-models
+python scripts/bundling/model_status.py --bucket barrikade-models
 
 # Download specific archived version (from GCS archives)
-python scripts/gcs_download.py \
+python scripts/bundling/gcs_download.py \
     --bucket barrikade-models \
     --version archives \
     --layers layer_c
@@ -160,7 +160,7 @@ python scripts/gcs_download.py \
 Compare local vs. GCS models:
 
 ```bash
-python scripts/model_status.py --bucket barrikade-models
+python scripts/bundling/model_status.py --bucket barrikade-models
 
 # Output:
 # Layer B: 5 files locally, 5 files in GCS, in sync ✓
@@ -175,17 +175,17 @@ Keep storage costs down by removing old archived versions:
 
 ```bash
 # Clean local archives (keep 3 most recent versions)
-python scripts/cleanup_archives.py --keep 3 --local
+python scripts/bundling/cleanup_archives.py --keep 3 --local
 
 # Clean GCS archives (keep 3 most recent versions)
-python scripts/cleanup_archives.py \
+python scripts/bundling/cleanup_archives.py \
     --keep 3 \
     --gcs \
     --bucket barrikade-models \
     --dry-run  # Preview what would be deleted
 
 # Actually delete
-python scripts/cleanup_archives.py \
+python scripts/bundling/cleanup_archives.py \
     --keep 3 \
     --gcs \
     --bucket barrikade-models
@@ -245,7 +245,7 @@ docker compose run -e BARRIKADA_GCS_BUCKET=barrikade-models barrikade-api
 Bundle scattered layer outputs into centralized `core/models/` directory.
 
 ```bash
-python scripts/bundle_models.py \
+python scripts/bundling/bundle_models.py \
     [--dry-run] \
     [--archive-old] \
     [--manifest PATH]
@@ -265,7 +265,7 @@ python scripts/bundle_models.py \
 Validate that bundled models are present and loadable.
 
 ```bash
-python scripts/validate_models.py [--verbose]
+python scripts/bundling/validate_models.py [--verbose]
 ```
 
 **Checks**:
@@ -280,7 +280,7 @@ python scripts/validate_models.py [--verbose]
 Upload bundled models to GCS bucket.
 
 ```bash
-python scripts/gcs_upload.py \
+python scripts/bundling/gcs_upload.py \
     --bucket BUCKET_NAME \
     [--project PROJECT_ID] \
     [--layers layer_b,layer_c] \
@@ -306,7 +306,7 @@ python scripts/gcs_upload.py \
 Download models from PUBLIC GCS bucket to local `core/models/`.
 
 ```bash
-python scripts/gcs_download.py \
+python scripts/bundling/gcs_download.py \
     --bucket BUCKET_NAME \
     [--layers layer_b,layer_c] \
     [--version latest|archives] \
@@ -332,7 +332,7 @@ python scripts/gcs_download.py \
 Show status of local models vs. GCS models.
 
 ```bash
-python scripts/model_status.py \
+python scripts/bundling/model_status.py \
     --bucket BUCKET_NAME \
     [--layers layer_b,layer_c]
 ```
@@ -354,7 +354,7 @@ python scripts/model_status.py \
 Remove old archived model versions.
 
 ```bash
-python scripts/cleanup_archives.py \
+python scripts/bundling/cleanup_archives.py \
     [--keep N] \
     [--layers layer_b,layer_c] \
     [--local] \
@@ -387,7 +387,7 @@ python scripts/cleanup_archives.py \
 1. Verify bucket is publicly readable: `gsutil iam get gs://$BARRIKADA_GCS_BUCKET | grep allUsers`
 2. Check bucket contents: `gsutil ls gs://$BARRIKADA_GCS_BUCKET/models/`
 3. Check container logs: `docker-compose logs barrikade-api`
-4. Test download manually: `python scripts/gcs_download.py --bucket barrikade-models`
+4. Test download manually: `python scripts/bundling/gcs_download.py --bucket barrikade-models`
 5. Mount models locally: `docker-compose run -v $(pwd)/core/models:/app/core/models`
 
 ### "Access Denied" error
@@ -413,10 +413,10 @@ gsutil iam get gs://$BUCKET_NAME | grep allUsers
 rm -rf core/models/layer_*/*.joblib core/models/layer_*/model core/models/layer_e/qwen3guard-barrikade core/models/layer_*/teacher
 
 # Re-download with validation
-python scripts/gcs_download.py --bucket barrikade-models --validate
+python scripts/bundling/gcs_download.py --bucket barrikade-models --validate
 
 # Check validation
-python scripts/validate_models.py --verbose
+python scripts/bundling/validate_models.py --verbose
 ```
 
 ### Pipeline still using old model versions
@@ -426,11 +426,11 @@ python scripts/validate_models.py --verbose
 **Fix**:
 ```bash
 # Force re-download by backing up existing models
-python scripts/gcs_download.py --bucket barrikade-models --archive-old
+python scripts/bundling/gcs_download.py --bucket barrikade-models --archive-old
 
 # Or delete and download fresh
 rm -rf core/models
-python scripts/gcs_download.py --bucket barrikade-models
+python scripts/bundling/gcs_download.py --bucket barrikade-models
 ```
 
 ## Environment Variables Reference
@@ -448,7 +448,7 @@ python scripts/gcs_download.py --bucket barrikade-models
 
 1. **Archive cleanup**: Keep only recent versions
    ```bash
-   python scripts/cleanup_archives.py --keep 2 --gcs --bucket barrikade-models
+   python scripts/bundling/cleanup_archives.py --keep 2 --gcs --bucket barrikade-models
    ```
 
 2. **Object lifecycle**: Configure GCS lifecycle policy to delete old backups
@@ -507,7 +507,7 @@ A: After training a new model or when distributing new versions to the team. Can
 A: No. Runtime loading code unchanged. Models are always read from `core/models/` locally.
 
 **Q: How much storage do models use?**  
-A: Check with `python scripts/model_status.py --bucket barrikade-models`
+A: Check with `python scripts/bundling/model_status.py --bucket barrikade-models`
 
 **Q: Can multiple team members upload simultaneously?**  
 A: Yes, but only one upload per layer at a time to avoid conflicts. GCS handles concurrent reads safely.

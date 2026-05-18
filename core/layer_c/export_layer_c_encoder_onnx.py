@@ -8,9 +8,9 @@ inference than the PT path.
 Workflow:
     1. Run this script: produces
        core/layer_c/outputs/encoder_onnx/
-    2. Bundle: scripts/bundle_models.py copies the directory to
+    2. Bundle: scripts/bundling/bundle_models.py copies the directory to
        core/models/layer_c/encoder_onnx/ alongside classifier.onnx
-    3. Upload: scripts/gcs_upload.py ships the bundled tree to GCS
+    3. Upload: scripts/bundling/gcs_upload.py ships the bundled tree to GCS
 
 Conversion approach: load all-mpnet-base-v2 with backend="onnx" --
 sentence-transformers' built-in PT->ONNX conversion via optimum.onnxruntime
@@ -19,8 +19,8 @@ bundle (config + tokenizer + ONNX weights + pooling config) to the target
 directory.
 
 Usage:
-    python scripts/export_layer_c_encoder_onnx.py
-    python scripts/export_layer_c_encoder_onnx.py --dst core/models/layer_c/encoder_onnx
+    python core/layer_c/export_layer_c_encoder_onnx.py
+    python core/layer_c/export_layer_c_encoder_onnx.py --dst core/models/layer_c/encoder_onnx
 """
 import argparse
 import time

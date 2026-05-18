@@ -5,7 +5,7 @@ Removes archived model versions beyond a specified threshold, keeping only
 the N most recent versions on both local filesystem and GCS.
 
 Usage:
-    python scripts/cleanup_archives.py --keep 3 [--layers layer_b,layer_c] [--local] [--gcs] [--bucket my-bucket] [--dry-run]
+    python scripts/bundling/cleanup_archives.py --keep 3 [--layers layer_b,layer_c] [--local] [--gcs] [--bucket my-bucket] [--dry-run]
     
     --keep:         Number of recent versions to keep (default: 3)
     --layers:       Comma-separated layer names to clean (default: all)

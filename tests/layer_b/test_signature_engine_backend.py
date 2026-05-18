@@ -7,8 +7,8 @@ helper and the live integration via SignatureEngine() against the
 canonical artifacts.
 
 Skipped if the real Layer B artifacts aren't present locally (run
-scripts/gcs_download.py to populate core/models/layer_b/, then
-scripts/export_layer_b_onnx.py to produce the ONNX sibling).
+scripts/bundling/gcs_download.py to populate core/models/layer_b/, then
+core/layer_b/export_layer_b_onnx.py to produce the ONNX sibling).
 """
 import sys
 from pathlib import Path
@@ -71,11 +71,11 @@ def test_signature_engine_prefers_onnx_when_available():
     artifacts aren't on disk locally."""
     if not PROMPT_ENCODER_ONNX_DIR.exists():
         pytest.skip(
-            f"missing {PROMPT_ENCODER_ONNX_DIR} -- run scripts/export_layer_b_onnx.py"
+            f"missing {PROMPT_ENCODER_ONNX_DIR} -- run core/layer_b/export_layer_b_onnx.py"
         )
     if not (EMBEDDINGS_DIR / "centroids.npy").exists():
         pytest.skip(
-            f"missing layer_b artifacts in {EMBEDDINGS_DIR} -- run scripts/gcs_download.py"
+            f"missing layer_b artifacts in {EMBEDDINGS_DIR} -- run scripts/bundling/gcs_download.py"
         )
 
     engine = SignatureEngine()

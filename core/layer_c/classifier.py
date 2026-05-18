@@ -69,7 +69,7 @@ class Classifier:
         # embeds the XGBClassifier object and would still require xgboost to
         # be installed) — it loads the calibrator from a separate
         # calibrator.joblib artifact written alongside classifier.onnx by
-        # scripts/export_layer_c_onnx.py. Once classifier.joblib is no longer
+        # core/layer_c/export_layer_c_onnx.py. Once classifier.joblib is no longer
         # bundled, xgboost can drop from the runtime image entirely.
         onnx_path = Path(model_path).with_suffix(".onnx")
         calibrator_path = Path(model_path).parent / "calibrator.joblib"

@@ -5,7 +5,7 @@ This script uploads all models in core/models/ to a GCS bucket, with support for
 archiving the previous version.
 
 Usage:
-    python scripts/gcs_upload.py --bucket my-bucket [--project my-project] [--layers layer_b,layer_c] [--dry-run]
+    python scripts/bundling/gcs_upload.py --bucket my-bucket [--project my-project] [--layers layer_b,layer_c] [--dry-run]
     
     --bucket:       GCS bucket name
     --project:      GCP project ID (optional, uses gcloud default if not specified)

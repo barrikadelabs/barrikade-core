@@ -5,7 +5,7 @@ This script downloads models from a PUBLIC GCS bucket to the local core/models/ 
 with support for downloading specific layers or archived versions.
 
 Usage:
-    python scripts/gcs_download.py [--bucket my-bucket] [--layers layer_b,layer_c] [--version latest]
+    python scripts/bundling/gcs_download.py [--bucket my-bucket] [--layers layer_b,layer_c] [--version latest]
     
     --bucket:       GCS bucket name
     --layers:       Comma-separated layer names to download (default: all)

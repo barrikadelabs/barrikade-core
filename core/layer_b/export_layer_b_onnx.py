@@ -12,9 +12,9 @@ Workflow:
        core/layer_b/signatures/embeddings/prompt_encoder/
     2. Run this script: produces
        core/layer_b/signatures/embeddings/prompt_encoder_onnx/
-    3. Bundle: scripts/bundle_models.py copies both directories to
+    3. Bundle: scripts/bundling/bundle_models.py copies both directories to
        core/models/layer_b/embeddings/
-    4. Upload: scripts/gcs_upload.py ships both to GCS
+    4. Upload: scripts/bundling/gcs_upload.py ships both to GCS
 
 Conversion approach: load the PT model with backend="onnx" -- this
 triggers sentence-transformers' built-in PT->ONNX conversion via
@@ -23,8 +23,8 @@ full self-contained bundle (config + tokenizer + ONNX weights + pooling
 config) to the target directory.
 
 Usage:
-    python scripts/export_layer_b_onnx.py
-    python scripts/export_layer_b_onnx.py --src core/layer_b/signatures/embeddings/prompt_encoder
+    python core/layer_b/export_layer_b_onnx.py
+    python core/layer_b/export_layer_b_onnx.py --src core/layer_b/signatures/embeddings/prompt_encoder
 """
 import argparse
 import sys

@@ -1,4 +1,4 @@
-"""Tests for scripts/bundle_models.py.
+"""Tests for scripts/bundling/bundle_models.py.
 
 Pins the per-layer required_patterns so a future regression that re-broadens
 them can't silently re-ship artifacts the runtime never loads. Each layer
@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.bundle_models import LAYER_CONFIGS, get_model_files
+from scripts.bundling.bundle_models import LAYER_CONFIGS, get_model_files
 
 
 def test_layer_c_pattern_excludes_dead_weight(tmp_path):
@@ -40,7 +40,7 @@ def test_layer_c_pattern_excludes_dead_weight(tmp_path):
     (release_dir / "classifier.joblib").write_bytes(b"v0.1_joblib")
 
     # ONNX-converted encoder bundle (produced by
-    # scripts/export_layer_c_encoder_onnx.py), runtime-loaded by
+    # core/layer_c/export_layer_c_encoder_onnx.py), runtime-loaded by
     # core/layer_c/classifier.py which prefers it over the HF Hub PT model.
     encoder_onnx = outputs / "encoder_onnx"
     encoder_onnx.mkdir()
@@ -80,7 +80,7 @@ def test_layer_c_pattern_excludes_dead_weight(tmp_path):
 
 def test_layer_d_pattern_includes_onnx_bundle(tmp_path):
     """Layer D bundling must ship both the PT model/ directory and the
-    onnx/ sibling produced by scripts/export_layer_d_onnx.py. The runtime
+    onnx/ sibling produced by core/layer_d/export_layer_d_onnx.py. The runtime
     classifier auto-detects onnx/ and prefers it over PT."""
     outputs = tmp_path / "outputs"
     outputs.mkdir()
@@ -140,7 +140,7 @@ def test_layer_b_pattern_excludes_unused_artifacts(tmp_path):
     (prompt_encoder / "model.safetensors").write_bytes(b"prompt_weights")
     (prompt_encoder / "tokenizer.json").write_text("{}")
 
-    # ONNX-converted encoder bundle (produced by scripts/export_layer_b_onnx.py),
+    # ONNX-converted encoder bundle (produced by core/layer_b/export_layer_b_onnx.py),
     # also runtime-loaded — signature_engine.py auto-detects this and prefers
     # it over the PT prompt_encoder when present.
     prompt_encoder_onnx = embeddings / "prompt_encoder_onnx"

@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from typing import Dict, Any, List
-from pydantic import BaseModel
+
+from models.verdicts import InputProvenance
 
 #make pydantic class
 @dataclass
 class LayerAResult:
     """Standardized result from Layer A (Text Preprocessing)"""
+
     
     # Input/Output text
     original_text: str
@@ -23,6 +25,11 @@ class LayerAResult:
     decode_info: Dict[str, Any]
     confusables: Dict[str, Any]
     embedded: Dict[str, Any]
+
+    # Input provenance — set by the session orchestrator, not by Layer A
+    # itself.  Defaults to UNKNOWN for backward compatibility with the
+    # stateless detect() path.
+    provenance: InputProvenance = InputProvenance.UNKNOWN
     
     def to_dict(self):
         """Convert to dictionary for serialization"""
@@ -35,7 +42,8 @@ class LayerAResult:
             'processing_time_ms': self.processing_time_ms,
             'decode_info': self.decode_info,
             'confusables': self.confusables,
-            'embedded': self.embedded
+            'embedded': self.embedded,
+            'provenance': self.provenance.value,
         }
     
     def get_verdict(self):

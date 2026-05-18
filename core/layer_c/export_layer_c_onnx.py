@@ -8,8 +8,8 @@ loads via onnxruntime instead of the Python xgboost/sklearn stack.
 Workflow:
     1. Train Layer C: produces core/layer_c/outputs/classifier.joblib
     2. Run this script: produces core/layer_c/outputs/classifier.onnx
-    3. Bundle: scripts/bundle_models.py copies both files to core/models/layer_c/
-    4. Upload: scripts/gcs_upload.py ships both to GCS
+    3. Bundle: scripts/bundling/bundle_models.py copies both files to core/models/layer_c/
+    4. Upload: scripts/bundling/gcs_upload.py ships both to GCS
 
 Note: the exported ONNX uses onnxmltools.convert_xgboost which produces a
 ZipMap probability output (list of {0: p0, 1: p1} dicts). The runtime in
@@ -17,8 +17,8 @@ core/layer_c/classifier.py:_predict_class1_probabilities unwraps this
 back to a 1-D class-1 probability array.
 
 Usage:
-    python scripts/export_layer_c_onnx.py
-    python scripts/export_layer_c_onnx.py --src core/layer_c/outputs/classifier.joblib
+    python core/layer_c/export_layer_c_onnx.py
+    python core/layer_c/export_layer_c_onnx.py --src core/layer_c/outputs/classifier.joblib
 """
 import argparse
 import sys

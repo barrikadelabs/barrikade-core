@@ -8,7 +8,7 @@ Displays information about:
 - Comparison between local and GCS versions
 
 Usage:
-    python scripts/model_status.py --bucket my-bucket [--layers layer_b,layer_c] [--compare]
+    python scripts/bundling/model_status.py --bucket my-bucket [--layers layer_b,layer_c] [--compare]
 """
 
 import argparse

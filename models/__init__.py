@@ -10,6 +10,22 @@ from .LayerDResult import LayerDResult
 from .SignatureMatch import SignatureMatch, Severity
 from .DetectionResult import DetectionResult
 from .PipelineResult import PipelineResult
+from .verdicts import (
+    DecisionLayer,
+    FinalVerdict,
+    InputProvenance,
+    Intervention,
+    ResampleStrategy,
+)
+from .incident_report import (
+    DriftEventRecord,
+    IncidentReport,
+    InputRecord,
+    InterventionRecord,
+    PipelineEventRecord,
+    RiskEventRecord,
+    ToolInvocation,
+)
 
 __all__ = [
     'LayerResult',
@@ -20,5 +36,19 @@ __all__ = [
     'SignatureMatch',
     'Severity',
     'DetectionResult',
-    'PipelineResult'
+    'PipelineResult',
+    # Verdicts and enums
+    'DecisionLayer',
+    'FinalVerdict',
+    'InputProvenance',
+    'Intervention',
+    'ResampleStrategy',
+    # Incident reporting
+    'DriftEventRecord',
+    'IncidentReport',
+    'InputRecord',
+    'InterventionRecord',
+    'PipelineEventRecord',
+    'RiskEventRecord',
+    'ToolInvocation',
 ]

@@ -10,9 +10,9 @@ Workflow:
        core/layer_d/outputs/model/ (BF16 transformers checkpoint)
     2. Run this script: produces
        core/layer_d/outputs/onnx/ (ONNX weights + tokenizer)
-    3. Bundle: scripts/bundle_models.py copies both directories to
+    3. Bundle: scripts/bundling/bundle_models.py copies both directories to
        core/models/layer_d/ (model/ and onnx/ as sibling dirs)
-    4. Upload: scripts/gcs_upload.py ships the bundled tree to GCS
+    4. Upload: scripts/bundling/gcs_upload.py ships the bundled tree to GCS
 
 Tokenizer workaround: the trained checkpoint's tokenizer_config.json carries
 tokenizer_class="TokenizersBackend" (a transformers 5.x symbol). The runtime
@@ -23,8 +23,8 @@ loads via PreTrainedTokenizerFast directly when AutoTokenizer raises this
 specific error.
 
 Usage:
-    python scripts/export_layer_d_onnx.py
-    python scripts/export_layer_d_onnx.py --src core/layer_d/outputs/model --dst core/layer_d/outputs/onnx
+    python core/layer_d/export_layer_d_onnx.py
+    python core/layer_d/export_layer_d_onnx.py --src core/layer_d/outputs/model --dst core/layer_d/outputs/onnx
 """
 import argparse
 import shutil

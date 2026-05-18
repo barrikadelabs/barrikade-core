@@ -7,7 +7,7 @@ This script checks:
 3. Model directory structure is correct
 
 Usage:
-    python scripts/validate_models.py [--verbose]
+    python scripts/bundling/validate_models.py [--verbose]
 """
 
 import argparse
