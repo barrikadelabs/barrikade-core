@@ -106,6 +106,10 @@ class Settings(BaseModel):
     # `BARRIKADA_CORE_MODELS_DIR` override). For hosting details,
     # refer to `docs/MODEL_HOSTING.md`.
 
+    ### Telemetry & Audit Configuration
+    telemetry_enabled: bool = True
+    telemetry_log_path: str = "test_results/barrikade_telemetry.jsonl"
+
     ### Layer B (embedding-based contrastive signature engine)
     layer_b_embedding_model: str = "BAAI/bge-small-en-v1.5"
 
