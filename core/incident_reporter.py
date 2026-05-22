@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from core.__version__ import __version__
 from core.session import (
     SessionEvent,
     SessionEventType,
@@ -28,7 +29,7 @@ from models.incident_report import (
 log = logging.getLogger(__name__)
 
 # Version constants (kept here so the reporter can stamp them)
-_BARRIKADE_VERSION = "0.2.0" #TODO: Update this to a more permanent settings setup
+_BARRIKADE_VERSION = __version__
 
 
 class IncidentReporter:

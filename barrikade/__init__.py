@@ -3,6 +3,7 @@
 import logging
 import os
 
+from core.__version__ import __version__
 from barrikade.sdk import (
     PIPipeline,
     SessionOrchestrator,
@@ -61,6 +62,7 @@ if os.getenv("BARRIKADA_SKIP_IMPORT_BUNDLE_CHECK", "0") == "0":
     ensure_runtime_bundle()
 
 __all__ = [
+    "__version__",
     "ArtifactDownloadError",
     "PIPipeline",
     "download_runtime_bundle",

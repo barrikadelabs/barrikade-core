@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "barrikade"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Runtime prompt-injection detection for AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -65,3 +65,6 @@ search_path = ["venv/lib/python3.11/site-packages"]
 # tests/conftest.py notes the assumption; this makes it actually true.
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools.dynamic]
+version = {attr = "core.__version__.__version__"}

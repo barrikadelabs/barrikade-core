@@ -12,6 +12,7 @@ from core.session_orchestrator import SessionOrchestrator, create_session_orches
 from core.session_settings import SessionSettings
 from core.settings import Settings
 from models.verdicts import InputProvenance
+from core.__version__ import __version__
 
 log = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Barrikade Detection API",
-    version="0.2.0",
+    version=__version__,
     description="Production API for the Barrikade detection pipeline.",
     lifespan=lifespan,
 )

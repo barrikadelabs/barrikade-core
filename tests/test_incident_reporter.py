@@ -12,6 +12,7 @@ from core.session import (
     SessionEventType,
 )
 from core.session_settings import SessionSettings
+from core.__version__ import __version__
 from models.incident_report import IncidentReport
 from models.verdicts import InputProvenance
 
@@ -65,7 +66,7 @@ def test_generate_report_empty_session(store, reporter):
     assert report.is_near_miss is False
     assert report.final_outcome == "completed"
     assert report.risk_budget_initial == 5
-    assert report.barrikade_version == "0.2.0"
+    assert report.barrikade_version == __version__
 
 
 def test_generate_report_nonexistent_session(reporter):

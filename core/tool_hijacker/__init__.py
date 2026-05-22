@@ -84,4 +84,4 @@ __all__ = [
     'GradientBasedSelectionOptimizer',
 ]
 
-__version__ = '0.2.0'
+from core.__version__ import __version__
