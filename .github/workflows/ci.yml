@@ -98,14 +98,6 @@ jobs:
         #                                          through pipeline.detect()
         #   tests/layer_e/test_layer_e.py        — Layer E judge over dataset
         #
-        # Excluded as a pre-existing known-broken upstream test:
-        #   tests/test_sdk.py                    — the
-        #     test_download_runtime_artifacts_fetches_missing_layers test was
-        #     merged with mock signatures and path assertions that don't match
-        #     the production _download_gcs_file / _iter_download_targets API.
-        #     Fails reliably on upstream/main. Skipped here so CI stays
-        #     focused on regressions in the PRs it gates; remove this --ignore
-        #     once the test is fixed upstream.
         env:
           PYTHONPATH: "."
         run: |
@@ -115,8 +107,7 @@ jobs:
             --ignore=tests/layer_d/test_layer_d.py \
             --ignore=tests/test_pipeline_full_pass.py \
             --ignore=tests/test_orchestrator.py \
-            --ignore=tests/layer_e/test_layer_e.py \
-            --ignore=tests/test_sdk.py
+            --ignore=tests/layer_e/test_layer_e.py
 
   docker-build:
     name: Production Docker image build

@@ -28,7 +28,7 @@ from models.incident_report import (
 log = logging.getLogger(__name__)
 
 # Version constants (kept here so the reporter can stamp them)
-_BARRIKADE_VERSION = "0.1.0" #TODO: Update this to a more permanent settings setup
+_BARRIKADE_VERSION = "0.2.0" #TODO: Update this to a more permanent settings setup
 
 
 class IncidentReporter:

@@ -137,7 +137,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Barrikade Detection API",
-    version="0.1.0",
+    version="0.2.0",
     description="Production API for the Barrikade detection pipeline.",
     lifespan=lifespan,
 )

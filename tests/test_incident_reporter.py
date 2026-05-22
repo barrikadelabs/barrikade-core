@@ -65,7 +65,7 @@ def test_generate_report_empty_session(store, reporter):
     assert report.is_near_miss is False
     assert report.final_outcome == "completed"
     assert report.risk_budget_initial == 5
-    assert report.barrikade_version == "0.1.0"
+    assert report.barrikade_version == "0.2.0"
 
 
 def test_generate_report_nonexistent_session(reporter):
