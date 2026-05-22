@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from typing import Dict, Any, List
 
 from models.verdicts import InputProvenance
+from models.LayerResult import LayerResult
 
 #make pydantic class
 @dataclass
-class LayerAResult:
+class LayerAResult(LayerResult):
     """Standardized result from Layer A (Text Preprocessing)"""
 
     
@@ -31,7 +32,7 @@ class LayerAResult:
     # stateless detect() path.
     provenance: InputProvenance = InputProvenance.UNKNOWN
     
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'original_text': self.original_text,
@@ -64,7 +65,7 @@ class LayerAResult:
         # Low severity flags
         return 'flag'
     
-    def get_risk_score(self):
+    def get_risk_score(self) -> float:
         """Calculate risk score contribution (0-100)"""
         if not self.suspicious:
             return 0.0
@@ -78,3 +79,8 @@ class LayerAResult:
         
         total_risk = sum(risk_weights.get(flag, 5.0) for flag in self.flags)
         return min(100.0, total_risk)
+
+    @property
+    def verdict(self) -> str:
+        """Get layer verdict: 'allow', 'flag', or 'block'"""
+        return self.get_verdict()
