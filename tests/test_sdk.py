@@ -41,7 +41,7 @@ def test_download_runtime_artifacts_fetches_missing_layers(monkeypatch, tmp_path
         listed_layers.append((bucket_name, layer_name))
         return [f"models/{layer_name}/artifact.bin"]
 
-    def fake_download(bucket_name, blob_name, local_path):
+    def fake_download(bucket_name, blob_name, local_path, label=None):
         downloaded_files.append((bucket_name, blob_name, str(local_path)))
         local_path.parent.mkdir(parents=True, exist_ok=True)
         local_path.write_text("ok")
@@ -91,3 +91,42 @@ def test_cli_download_artifacts_invokes_downloader(monkeypatch, capsys):
     assert output["bucket"] == "sdk-bucket"
     assert output["manifest_url"] == "https://example.com/manifest.json"
     assert output["force"] is True
+
+
+def test_public_sdk_exports_stateful_security():
+    from core.session_orchestrator import (
+        SessionOrchestrator as CoreSessionOrchestrator,
+        create_session_orchestrator as core_create_session_orchestrator,
+        SessionDetectResult as CoreSessionDetectResult,
+    )
+    from core.session_settings import SessionSettings as CoreSessionSettings
+    from core.session import (
+        SessionEvent as CoreSessionEvent,
+        SessionEventType as CoreSessionEventType,
+        SessionNotActiveError as CoreSessionNotActiveError,
+        SessionStatus as CoreSessionStatus,
+        WorkloadSession as CoreWorkloadSession,
+        SessionStoreBackend as CoreSessionStoreBackend,
+        InMemorySessionStore as CoreInMemorySessionStore,
+    )
+    from models.verdicts import (
+        InputProvenance as CoreInputProvenance,
+        Intervention as CoreIntervention,
+    )
+    from models.incident_report import IncidentReport as CoreIncidentReport
+
+    assert barrikade.SessionOrchestrator is CoreSessionOrchestrator
+    assert barrikade.create_session_orchestrator is core_create_session_orchestrator
+    assert barrikade.SessionDetectResult is CoreSessionDetectResult
+    assert barrikade.SessionSettings is CoreSessionSettings
+    assert barrikade.SessionEvent is CoreSessionEvent
+    assert barrikade.SessionEventType is CoreSessionEventType
+    assert barrikade.SessionNotActiveError is CoreSessionNotActiveError
+    assert barrikade.SessionStatus is CoreSessionStatus
+    assert barrikade.WorkloadSession is CoreWorkloadSession
+    assert barrikade.SessionStoreBackend is CoreSessionStoreBackend
+    assert barrikade.InMemorySessionStore is CoreInMemorySessionStore
+    assert barrikade.InputProvenance is CoreInputProvenance
+    assert barrikade.Intervention is CoreIntervention
+    assert barrikade.IncidentReport is CoreIncidentReport
+

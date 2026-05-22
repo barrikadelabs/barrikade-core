@@ -3,7 +3,24 @@
 import logging
 import os
 
-from barrikade.sdk import PIPipeline
+from core.__version__ import __version__
+from barrikade.sdk import (
+    PIPipeline,
+    SessionOrchestrator,
+    create_session_orchestrator,
+    SessionDetectResult,
+    SessionSettings,
+    SessionEvent,
+    SessionEventType,
+    SessionNotActiveError,
+    SessionStatus,
+    WorkloadSession,
+    SessionStoreBackend,
+    InMemorySessionStore,
+    InputProvenance,
+    Intervention,
+    IncidentReport,
+)
 from core.artifacts import (
     ArtifactDownloadError,
     download_runtime_bundle,
@@ -45,11 +62,26 @@ if os.getenv("BARRIKADA_SKIP_IMPORT_BUNDLE_CHECK", "0") == "0":
     ensure_runtime_bundle()
 
 __all__ = [
+    "__version__",
     "ArtifactDownloadError",
     "PIPipeline",
     "download_runtime_bundle",
     "download_runtime_artifacts",
     "ensure_runtime_bundle",
     "ensure_runtime_artifacts",
+    "SessionOrchestrator",
+    "create_session_orchestrator",
+    "SessionDetectResult",
+    "SessionSettings",
+    "SessionEvent",
+    "SessionEventType",
+    "SessionNotActiveError",
+    "SessionStatus",
+    "WorkloadSession",
+    "SessionStoreBackend",
+    "InMemorySessionStore",
+    "InputProvenance",
+    "Intervention",
+    "IncidentReport",
 ]
 
