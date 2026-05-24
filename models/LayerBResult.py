@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 from .SignatureMatch import SignatureMatch
+from models.LayerResult import LayerResult
 
 @dataclass
-class LayerBResult:
+class LayerBResult(LayerResult):
     """Standardized result from Layer B (Signature Detection)"""
     
     # Detection results
@@ -24,7 +25,7 @@ class LayerBResult:
     allowlisted: bool = False
     allowlist_rules: List[str] = field(default_factory=list)
     
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'input_hash': self.input_hash,
@@ -52,7 +53,7 @@ class LayerBResult:
             'allowlist_rules': list(self.allowlist_rules),
         }
 
-    def get_risk_score(self):
+    def get_risk_score(self) -> float:
         """Calculate risk score contribution (0-100)."""
         if self.allowlisted:
             return 0.0

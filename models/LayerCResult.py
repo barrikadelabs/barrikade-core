@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import Dict, Any
+from models.LayerResult import LayerResult
 
 @dataclass
-class LayerCResult:
+class LayerCResult(LayerResult):
     """Standardized result from Layer C (ML Classifier)"""
     
     # Detection results
@@ -13,7 +14,7 @@ class LayerCResult:
     # Processing metadata
     processing_time_ms: float
     
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'verdict': self.verdict,
@@ -22,7 +23,7 @@ class LayerCResult:
             'processing_time_ms': self.processing_time_ms,
         }
     
-    def get_risk_score(self):
+    def get_risk_score(self) -> float:
         """Calculate risk score contribution (0-100)"""
         # Scale probability to risk score
         return self.probability_score * 100.0

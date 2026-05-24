@@ -27,6 +27,7 @@ from core.session import (
 from core.session_settings import SessionSettings
 from models.verdicts import InputProvenance, Intervention
 from models.incident_report import IncidentReport
+from core.telemetry import telemetry
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +93,8 @@ class SessionOrchestrator:
         provenance: InputProvenance = InputProvenance.UNKNOWN,
         delegation_chain: list[str] | None = None,
         risk_budget: int | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
     ) -> str:
         """Create a new workload session.
 
@@ -103,6 +106,8 @@ class SessionOrchestrator:
                 path (populated by the calling framework; Barrikada does
                 not validate chain integrity).
             risk_budget: Override the default risk budget for this session.
+            trace_id: Distributed tracing trace identifier.
+            span_id: Distributed tracing span identifier.
 
         Returns:
             session_id for subsequent calls.
@@ -121,6 +126,26 @@ class SessionOrchestrator:
             declared_intent[:80],
             session.risk_budget_initial,
         )
+
+        try:
+            telemetry.emit(
+                event_type="session_start",
+                workload_id=session.session_id,
+                trace_id=trace_id,
+                span_id=span_id,
+                payload={
+                    "declared_intent": declared_intent,
+                    "permissions": permissions or [],
+                    "provenance": provenance.value,
+                    "delegation_chain": delegation_chain or [],
+                },
+                metrics={
+                    "risk_budget_initial": session.risk_budget_initial,
+                },
+            )
+        except Exception as e:
+            log.warning("Failed to emit session_start telemetry: %s", e)
+
         return session.session_id
 
     def detect_with_session(
@@ -130,6 +155,8 @@ class SessionOrchestrator:
         provenance: InputProvenance = InputProvenance.UNKNOWN,
         tool_name: str | None = None,
         target_domain: str | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
     ) -> SessionDetectResult:
         """Run a session-aware detection.
 
@@ -146,6 +173,8 @@ class SessionOrchestrator:
             provenance: Trust level of this input.
             tool_name: Name of the tool being invoked (if applicable).
             target_domain: External domain being contacted (if applicable).
+            trace_id: Distributed tracing trace identifier.
+            span_id: Distributed tracing span identifier.
 
         Returns:
             SessionDetectResult with pipeline output + session context.
@@ -166,7 +195,9 @@ class SessionOrchestrator:
         now = datetime.now(timezone.utc)
 
         # 1. Run the stateless pipeline
-        pipeline_result = self._pipeline.detect(input_text)
+        pipeline_result = self._pipeline.detect(
+            input_text, workload_id=session_id, trace_id=trace_id, span_id=span_id
+        )
         result_dict = pipeline_result.to_dict()
 
         # 2. Record as pipeline event
@@ -212,6 +243,24 @@ class SessionOrchestrator:
 
         # 3. Compute intent drift
         drift = self._scorer.compute_drift(session.intent_vector, input_text)
+
+        try:
+            telemetry.emit(
+                event_type="drift_check",
+                workload_id=session_id,
+                trace_id=trace_id,
+                span_id=span_id,
+                payload={
+                    "drift_level": drift.risk_level.value,
+                    "action_summary": input_text[:200],
+                },
+                metrics={
+                    "drift_score": drift.drift_score,
+                },
+            )
+        except Exception as e:
+            log.warning("Failed to emit drift_check telemetry: %s", e)
+
         self._store.append_event(
             session_id,
             SessionEvent(
@@ -267,6 +316,26 @@ class SessionOrchestrator:
             )
             intervention = risk_assessment.intervention
 
+            # Emit risk_budget_deduction event
+            try:
+                budget_deducted = sum(e.cost for e in risk_assessment.risk_events)
+                telemetry.emit(
+                    event_type="risk_budget_deduction",
+                    workload_id=session_id,
+                    trace_id=trace_id,
+                    span_id=span_id,
+                    payload={
+                        "deduction_reasons": risk_descriptions,
+                        "risk_categories": [c.value for c in risk_categories],
+                    },
+                    metrics={
+                        "budget_remaining": risk_assessment.budget_remaining,
+                        "budget_deducted": budget_deducted,
+                    },
+                )
+            except Exception as e:
+                log.warning("Failed to emit risk_budget_deduction telemetry: %s", e)
+
             # Record intervention event if non-trivial
             if intervention != Intervention.NONE:
                 self._store.append_event(
@@ -287,6 +356,20 @@ class SessionOrchestrator:
                         provenance=provenance,
                     ),
                 )
+                # Emit intervention_triggered event
+                try:
+                    telemetry.emit(
+                        event_type="intervention_triggered",
+                        workload_id=session_id,
+                        trace_id=trace_id,
+                        span_id=span_id,
+                        payload={
+                            "intervention": intervention.value,
+                            "reason": risk_assessment.reason,
+                        },
+                    )
+                except Exception as e:
+                    log.warning("Failed to emit intervention_triggered telemetry: %s", e)
 
         # 6. Drift-severity override.
         # CRITICAL drift (>= intent_drift_block_threshold) is a hard policy
@@ -299,6 +382,11 @@ class SessionOrchestrator:
                 session_id,
                 drift.drift_score,
             )
+            reason_str = (
+                f"Intent drift {drift.drift_score:.3f} reached "
+                f"CRITICAL level (>= block threshold). "
+                "Mandatory human review required before proceeding."
+            )
             self._store.append_event(
                 session_id,
                 SessionEvent(
@@ -307,11 +395,7 @@ class SessionOrchestrator:
                     timestamp=now,
                     data={
                         "intervention": intervention.value,
-                        "reason": (
-                            f"Intent drift {drift.drift_score:.3f} reached "
-                            f"CRITICAL level (>= block threshold). "
-                            "Mandatory human review required before proceeding."
-                        ),
+                        "reason": reason_str,
                         "trigger": "critical_drift",
                         "details": {
                             "drift_score": drift.drift_score,
@@ -321,6 +405,20 @@ class SessionOrchestrator:
                     provenance=provenance,
                 ),
             )
+            # Emit intervention_triggered event
+            try:
+                telemetry.emit(
+                    event_type="intervention_triggered",
+                    workload_id=session_id,
+                    trace_id=trace_id,
+                    span_id=span_id,
+                    payload={
+                        "intervention": intervention.value,
+                        "reason": reason_str,
+                    },
+                )
+            except Exception as e:
+                log.warning("Failed to emit intervention_triggered telemetry: %s", e)
 
         return SessionDetectResult(
             pipeline_result=result_dict,
@@ -335,6 +433,8 @@ class SessionOrchestrator:
         session_id: str,
         model_version: str = "",
         scaffold_version: str = "",
+        trace_id: str | None = None,
+        span_id: str | None = None,
     ) -> IncidentReport:
         """Close a session and generate the incident report.
 
@@ -342,11 +442,13 @@ class SessionOrchestrator:
             session_id: The session to close.
             model_version: Model version for the report metadata.
             scaffold_version: Scaffold version for the report metadata.
+            trace_id: Distributed tracing trace identifier.
+            span_id: Distributed tracing span identifier.
 
         Returns:
             IncidentReport for the closed session.
         """
-        self._store.close_session(session_id)
+        session = self._store.close_session(session_id)
         report = self._reporter.generate_report(
             session_id,
             model_version=model_version,
@@ -360,6 +462,30 @@ class SessionOrchestrator:
             report.risk_budget_final,
             report.risk_budget_initial,
         )
+
+        try:
+            telemetry.emit(
+                event_type="session_end",
+                workload_id=session_id,
+                trace_id=trace_id,
+                span_id=span_id,
+                payload={
+                    "model_version": model_version,
+                    "scaffold_version": scaffold_version,
+                    "is_near_miss": report.is_near_miss,
+                    "session_status": session.status.value,
+                    "external_domains_contacted": session.external_domains_contacted,
+                },
+                metrics={
+                    "risk_budget_initial": report.risk_budget_initial,
+                    "risk_budget_final": report.risk_budget_final,
+                    "max_intent_drift_score": report.max_intent_drift_score,
+                    "total_events": len(session.events),
+                },
+            )
+        except Exception as e:
+            log.warning("Failed to emit session_end telemetry: %s", e)
+
         return report
 
     def get_session_summary(self, session_id: str) -> dict[str, Any]:

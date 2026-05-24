@@ -70,11 +70,13 @@ class MockPipeline:
 
     def __init__(self):
         self._next_verdict = None
+        self.last_detect_kwargs = {}
 
     def set_next_verdict(self, verdict: str, layer: str = "B", confidence: float = 0.95):
         self._next_verdict = (verdict, layer, confidence)
 
-    def detect(self, input_text: str):
+    def detect(self, input_text: str, *args, **kwargs):
+        self.last_detect_kwargs = kwargs
         verdict_val, layer, confidence = self._next_verdict or ("allow", "B", 0.95)
         self._next_verdict = None
 
@@ -448,3 +450,204 @@ def test_detect_rejected_on_completed_session(orchestrator):
     with pytest.raises(SessionNotActiveError) as excinfo:
         orchestrator.detect_with_session(session_id, "after end")
     assert excinfo.value.status == SessionStatus.COMPLETED
+
+
+@patch("core.session_orchestrator.telemetry.emit")
+def test_distributed_tracing_and_telemetry_emission(mock_emit, orchestrator, mock_pipeline, mock_scorer):
+    # 1. Start session with trace_id and span_id
+    session_id = orchestrator.start_session(
+        declared_intent="Analyze risk parameters",
+        permissions=["read_system"],
+        delegation_chain=["agent_x"],
+        risk_budget=10,
+        trace_id="trace-123",
+        span_id="span-456",
+    )
+    
+    # Assert session_start telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="session_start",
+        workload_id=session_id,
+        trace_id="trace-123",
+        span_id="span-456",
+        payload={
+            "declared_intent": "Analyze risk parameters",
+            "permissions": ["read_system"],
+            "provenance": "unknown",
+            "delegation_chain": ["agent_x"],
+        },
+        metrics={
+            "risk_budget_initial": 10,
+        },
+    )
+
+    mock_emit.reset_mock()
+
+    # 2. Call detect_with_session with trace_id and span_id
+    mock_pipeline.set_next_verdict("allow")
+    mock_scorer.set_next_drift(0.12)
+    
+    orchestrator.detect_with_session(
+        session_id=session_id,
+        input_text="Benign action",
+        trace_id="trace-789",
+        span_id="span-012",
+    )
+
+    # Assert trace propagation to pipeline.detect()
+    assert mock_pipeline.last_detect_kwargs == {
+        "workload_id": session_id,
+        "trace_id": "trace-789",
+        "span_id": "span-012",
+    }
+
+    # Assert drift_check telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="drift_check",
+        workload_id=session_id,
+        trace_id="trace-789",
+        span_id="span-012",
+        payload={
+            "drift_level": "low",
+            "action_summary": "Benign action",
+        },
+        metrics={
+            "drift_score": 0.12,
+        },
+    )
+
+    mock_emit.reset_mock()
+
+    # 3. Trigger risk budget deduction
+    mock_pipeline.set_next_verdict("block")  # triggers PIPELINE_FLAG (cost 1)
+    mock_scorer.set_next_drift(0.40)        # triggers HIGH_INTENT_DRIFT (cost 1)
+    
+    orchestrator.detect_with_session(
+        session_id=session_id,
+        input_text="Highly suspicious payload",
+        trace_id="trace-abc",
+        span_id="span-def",
+    )
+
+    # Assert risk_budget_deduction telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="risk_budget_deduction",
+        workload_id=session_id,
+        trace_id="trace-abc",
+        span_id="span-def",
+        payload={
+            "deduction_reasons": [
+                "Pipeline verdict: block (layer B)",
+                "Intent drift 0.400 exceeds threshold 0.35"
+            ],
+            "risk_categories": ["pipeline_flag", "high_intent_drift"],
+        },
+        metrics={
+            "budget_remaining": 8,
+            "budget_deducted": 2,
+        },
+    )
+
+    # Assert intervention_triggered was NOT emitted because intervention remains Intervention.NONE (budget is still 8)
+    assert not any(call[1].get("event_type") == "intervention_triggered" for call in mock_emit.call_args_list)
+
+    mock_emit.reset_mock()
+
+    # 4. Trigger intervention_triggered via budget exhaustion
+    session_id_exhaust = orchestrator.start_session(
+        declared_intent="Small budget task",
+        risk_budget=1,
+        trace_id="trace-ex",
+        span_id="span-ex",
+    )
+    mock_emit.reset_mock()
+    mock_pipeline.set_next_verdict("block")
+    mock_scorer.set_next_drift(0.40)
+    orchestrator.detect_with_session(
+        session_id=session_id_exhaust,
+        input_text="Exhaust budget",
+        trace_id="trace-ex-detect",
+        span_id="span-ex-detect",
+    )
+    
+    # Assert intervention_triggered telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="intervention_triggered",
+        workload_id=session_id_exhaust,
+        trace_id="trace-ex-detect",
+        span_id="span-ex-detect",
+        payload={
+            "intervention": "escalate",
+            "reason": (
+                "Risk budget exhausted (spent 2, "
+                "remaining -1/1). "
+                "Mandatory human review required before proceeding."
+            ),
+        },
+    )
+
+    mock_emit.reset_mock()
+
+    # 5. Trigger intervention_triggered via critical drift override
+    session_id_crit = orchestrator.start_session(
+        declared_intent="Critical drift task",
+        risk_budget=100,
+        trace_id="trace-crit",
+        span_id="span-crit",
+    )
+    mock_emit.reset_mock()
+    mock_pipeline.set_next_verdict("allow")
+    mock_scorer.set_next_drift(0.65) # Critical drift
+    orchestrator.detect_with_session(
+        session_id=session_id_crit,
+        input_text="Completely unrelated action",
+        trace_id="trace-crit-detect",
+        span_id="span-crit-detect",
+    )
+
+    # Assert intervention_triggered telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="intervention_triggered",
+        workload_id=session_id_crit,
+        trace_id="trace-crit-detect",
+        span_id="span-crit-detect",
+        payload={
+            "intervention": "escalate",
+            "reason": (
+                "Intent drift 0.650 reached CRITICAL level (>= block threshold). "
+                "Mandatory human review required before proceeding."
+            ),
+        },
+    )
+
+    mock_emit.reset_mock()
+
+    # 6. End session with trace_id and span_id
+    report = orchestrator.end_session(
+        session_id=session_id_crit,
+        model_version="gpt-4o",
+        scaffold_version="1.2.3",
+        trace_id="trace-end",
+        span_id="span-end",
+    )
+
+    # Assert session_end telemetry was emitted
+    mock_emit.assert_any_call(
+        event_type="session_end",
+        workload_id=session_id_crit,
+        trace_id="trace-end",
+        span_id="span-end",
+        payload={
+            "model_version": "gpt-4o",
+            "scaffold_version": "1.2.3",
+            "is_near_miss": report.is_near_miss,
+            "session_status": "completed",
+            "external_domains_contacted": [],
+        },
+        metrics={
+            "risk_budget_initial": 100,
+            "risk_budget_final": 99,
+            "max_intent_drift_score": 0.65,
+            "total_events": len(orchestrator._store.get_session(session_id_crit).events),
+        },
+    )
