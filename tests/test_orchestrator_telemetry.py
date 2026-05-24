@@ -4,6 +4,14 @@ from core.orchestrator import PIPipeline
 from models.verdicts import DecisionLayer, FinalVerdict
 from models.LayerEResult import LayerEResult
 
+def dummy_init(self):
+    self.layer_a_analyze = MagicMock()
+    self.layer_b_engine = MagicMock()
+    self.layer_c_classifier = MagicMock()
+    self.layer_d_classifier = MagicMock()
+    self.layer_e_judge = MagicMock()
+
+@patch("core.orchestrator.PIPipeline.__init__", dummy_init)
 @patch("core.orchestrator.ensure_runtime_artifacts")
 @patch("core.layer_a.pipeline.analyze_text")
 @patch("core.layer_b.signature_engine.SignatureEngine")
