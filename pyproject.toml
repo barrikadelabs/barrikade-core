@@ -65,6 +65,10 @@ search_path = ["venv/lib/python3.11/site-packages"]
 # tests/conftest.py notes the assumption; this makes it actually true.
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "telemetry: mark tests relating to centralized observability telemetry",
+    "slow: mark tests that are slow integration or dataset-driven evaluation tests",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "core.__version__.__version__"}

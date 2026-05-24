@@ -1,8 +1,11 @@
 import os
 import datetime
+from pathlib import Path
 
 import pandas as pd
 import pytest
+
+project_root = Path(__file__).resolve().parents[2]
 
 from core.orchestrator import PIPipeline
 
@@ -10,6 +13,7 @@ if os.getenv("BARRIKADA_AUTO_DOWNLOAD_ARTIFACTS", "1") == "0":
     pytest.skip("Auto-download disabled for tests.", allow_module_level=True)
 
 
+@pytest.mark.slow
 def test_pipeline():
     print("Orchestrator Demo")
     print()
@@ -20,7 +24,9 @@ def test_pipeline():
     correct = 0
     results = []  # Store results for CSV export
 
-    test_case_df = pd.read_csv("datasets/barrikade_test.csv")
+    test_case_df = pd.read_csv(project_root / "datasets" / "barrikade_test.csv")
+    if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
+        test_case_df = test_case_df.head(5)
 
     for _, row in test_case_df.iterrows():
         test_cases.append(

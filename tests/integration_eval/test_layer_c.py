@@ -20,14 +20,17 @@ ARTIFACTS = {
 
 def load_thresholds():
     settings = Settings()
-    low = float(settings.layer_c_low_threshold)
-    high = float(settings.layer_c_high_threshold)
+    low = settings.layer_c_low_threshold
+    high = settings.layer_c_high_threshold
     print(f"Using manual thresholds from settings: low={low:.4f}, high={high:.4f}")
     return low, high
 
 
 def load_test_data(csv_path):
+    import os
     df = pd.read_csv(csv_path)
+    if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
+        df = df.head(5)
     return df["text"].tolist(), df["label"].tolist()
 
 
@@ -130,8 +133,11 @@ def evaluate_classifier(classifier, texts, labels):
     }
 
 
+import pytest
+
+@pytest.mark.slow
 def test_layer_c():
-    test_texts, true_labels = load_test_data("datasets/barrikade_test.csv")
+    test_texts, true_labels = load_test_data(project_root / "datasets" / "barrikade_test.csv")
     
     # Use manual thresholds from settings.
     low, high = load_thresholds()

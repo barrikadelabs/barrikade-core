@@ -95,6 +95,8 @@ class SessionOrchestrator:
         risk_budget: int | None = None,
         trace_id: str | None = None,
         span_id: str | None = None,
+        client_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> str:
         """Create a new workload session.
 
@@ -108,6 +110,8 @@ class SessionOrchestrator:
             risk_budget: Override the default risk budget for this session.
             trace_id: Distributed tracing trace identifier.
             span_id: Distributed tracing span identifier.
+            client_id: Optional client identifier for identity correlation.
+            tenant_id: Optional tenant identifier for identity correlation.
 
         Returns:
             session_id for subsequent calls.
@@ -119,6 +123,8 @@ class SessionOrchestrator:
             initial_permissions=permissions,
             delegation_chain=delegation_chain,
             risk_budget=risk_budget,
+            client_id=client_id,
+            tenant_id=tenant_id,
         )
         log.info(
             "Started session %s: intent=%r, budget=%d",
@@ -128,21 +134,26 @@ class SessionOrchestrator:
         )
 
         try:
-            telemetry.emit(
-                event_type="session_start",
-                workload_id=session.session_id,
-                trace_id=trace_id,
-                span_id=span_id,
-                payload={
+            telemetry_kwargs = {
+                "event_type": "session_start",
+                "workload_id": session.session_id,
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "payload": {
                     "declared_intent": declared_intent,
                     "permissions": permissions or [],
                     "provenance": provenance.value,
                     "delegation_chain": delegation_chain or [],
                 },
-                metrics={
+                "metrics": {
                     "risk_budget_initial": session.risk_budget_initial,
                 },
-            )
+            }
+            if client_id is not None:
+                telemetry_kwargs["client_id"] = client_id
+            if tenant_id is not None:
+                telemetry_kwargs["tenant_id"] = tenant_id
+            telemetry.emit(**telemetry_kwargs)
         except Exception as e:
             log.warning("Failed to emit session_start telemetry: %s", e)
 
@@ -182,6 +193,9 @@ class SessionOrchestrator:
         session = self._store.get_session(session_id)
         if session is None:
             raise KeyError(f"Session {session_id} not found")
+
+        client_id = getattr(session, "client_id", None)
+        tenant_id = getattr(session, "tenant_id", None)
 
         # Reject detects on non-active sessions. PAUSED means a prior call
         # exhausted the risk budget and the doc-stated policy is to require
@@ -245,19 +259,24 @@ class SessionOrchestrator:
         drift = self._scorer.compute_drift(session.intent_vector, input_text)
 
         try:
-            telemetry.emit(
-                event_type="drift_check",
-                workload_id=session_id,
-                trace_id=trace_id,
-                span_id=span_id,
-                payload={
+            telemetry_kwargs = {
+                "event_type": "drift_check",
+                "workload_id": session_id,
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "payload": {
                     "drift_level": drift.risk_level.value,
                     "action_summary": input_text[:200],
                 },
-                metrics={
+                "metrics": {
                     "drift_score": drift.drift_score,
                 },
-            )
+            }
+            if client_id is not None:
+                telemetry_kwargs["client_id"] = client_id
+            if tenant_id is not None:
+                telemetry_kwargs["tenant_id"] = tenant_id
+            telemetry.emit(**telemetry_kwargs)
         except Exception as e:
             log.warning("Failed to emit drift_check telemetry: %s", e)
 
@@ -319,20 +338,25 @@ class SessionOrchestrator:
             # Emit risk_budget_deduction event
             try:
                 budget_deducted = sum(e.cost for e in risk_assessment.risk_events)
-                telemetry.emit(
-                    event_type="risk_budget_deduction",
-                    workload_id=session_id,
-                    trace_id=trace_id,
-                    span_id=span_id,
-                    payload={
+                telemetry_kwargs = {
+                    "event_type": "risk_budget_deduction",
+                    "workload_id": session_id,
+                    "trace_id": trace_id,
+                    "span_id": span_id,
+                    "payload": {
                         "deduction_reasons": risk_descriptions,
                         "risk_categories": [c.value for c in risk_categories],
                     },
-                    metrics={
+                    "metrics": {
                         "budget_remaining": risk_assessment.budget_remaining,
                         "budget_deducted": budget_deducted,
                     },
-                )
+                }
+                if client_id is not None:
+                    telemetry_kwargs["client_id"] = client_id
+                if tenant_id is not None:
+                    telemetry_kwargs["tenant_id"] = tenant_id
+                telemetry.emit(**telemetry_kwargs)
             except Exception as e:
                 log.warning("Failed to emit risk_budget_deduction telemetry: %s", e)
 
@@ -358,16 +382,21 @@ class SessionOrchestrator:
                 )
                 # Emit intervention_triggered event
                 try:
-                    telemetry.emit(
-                        event_type="intervention_triggered",
-                        workload_id=session_id,
-                        trace_id=trace_id,
-                        span_id=span_id,
-                        payload={
+                    telemetry_kwargs = {
+                        "event_type": "intervention_triggered",
+                        "workload_id": session_id,
+                        "trace_id": trace_id,
+                        "span_id": span_id,
+                        "payload": {
                             "intervention": intervention.value,
                             "reason": risk_assessment.reason,
                         },
-                    )
+                    }
+                    if client_id is not None:
+                        telemetry_kwargs["client_id"] = client_id
+                    if tenant_id is not None:
+                        telemetry_kwargs["tenant_id"] = tenant_id
+                    telemetry.emit(**telemetry_kwargs)
                 except Exception as e:
                     log.warning("Failed to emit intervention_triggered telemetry: %s", e)
 
@@ -407,16 +436,21 @@ class SessionOrchestrator:
             )
             # Emit intervention_triggered event
             try:
-                telemetry.emit(
-                    event_type="intervention_triggered",
-                    workload_id=session_id,
-                    trace_id=trace_id,
-                    span_id=span_id,
-                    payload={
+                telemetry_kwargs = {
+                    "event_type": "intervention_triggered",
+                    "workload_id": session_id,
+                    "trace_id": trace_id,
+                    "span_id": span_id,
+                    "payload": {
                         "intervention": intervention.value,
                         "reason": reason_str,
                     },
-                )
+                }
+                if client_id is not None:
+                    telemetry_kwargs["client_id"] = client_id
+                if tenant_id is not None:
+                    telemetry_kwargs["tenant_id"] = tenant_id
+                telemetry.emit(**telemetry_kwargs)
             except Exception as e:
                 log.warning("Failed to emit intervention_triggered telemetry: %s", e)
 
@@ -449,6 +483,8 @@ class SessionOrchestrator:
             IncidentReport for the closed session.
         """
         session = self._store.close_session(session_id)
+        client_id = getattr(session, "client_id", None)
+        tenant_id = getattr(session, "tenant_id", None)
         report = self._reporter.generate_report(
             session_id,
             model_version=model_version,
@@ -464,25 +500,30 @@ class SessionOrchestrator:
         )
 
         try:
-            telemetry.emit(
-                event_type="session_end",
-                workload_id=session_id,
-                trace_id=trace_id,
-                span_id=span_id,
-                payload={
+            telemetry_kwargs = {
+                "event_type": "session_end",
+                "workload_id": session_id,
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "payload": {
                     "model_version": model_version,
                     "scaffold_version": scaffold_version,
                     "is_near_miss": report.is_near_miss,
                     "session_status": session.status.value,
                     "external_domains_contacted": session.external_domains_contacted,
                 },
-                metrics={
+                "metrics": {
                     "risk_budget_initial": report.risk_budget_initial,
                     "risk_budget_final": report.risk_budget_final,
                     "max_intent_drift_score": report.max_intent_drift_score,
                     "total_events": len(session.events),
                 },
-            )
+            }
+            if client_id is not None:
+                telemetry_kwargs["client_id"] = client_id
+            if tenant_id is not None:
+                telemetry_kwargs["tenant_id"] = tenant_id
+            telemetry.emit(**telemetry_kwargs)
         except Exception as e:
             log.warning("Failed to emit session_end telemetry: %s", e)
 
