@@ -113,7 +113,7 @@ import pytest
 def test_layer_d():
     if not REPORT_PATH.exists():
         pytest.skip(f"Trained thresholds and model dir report not found at {REPORT_PATH}. Skipping Layer D evaluation test.")
-    test_texts, true_labels = load_test_data("datasets/barrikade_test.csv")
+    test_texts, true_labels = load_test_data(project_root / "datasets" / "barrikade_test.csv")
 
     low, high, model_dir = load_trained_thresholds_and_model_dir()
     classifier = LayerDClassifier(model_dir=model_dir, low=low, high=high)

@@ -12,10 +12,12 @@ import pandas as pd
 
 from core.orchestrator import PIPipeline
 
+project_root = Path(__file__).resolve().parents[2]
+
 
 def run_full_pipeline_pass():
     import os
-    df = pd.read_csv("datasets/barrikade_test.csv")
+    df = pd.read_csv(project_root / "datasets" / "barrikade_test.csv")
     if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
         df = df.head(5)
     pipeline = PIPipeline()
@@ -31,9 +33,9 @@ def run_full_pipeline_pass():
                 "true_label": int(row["label"]),
                 "final_verdict": outcome.final_verdict.value,
                 "decision_layer": outcome.decision_layer.value,
-                "confidence_score": float(outcome.confidence_score),
-                "total_processing_time_ms": float(outcome.total_processing_time_ms),
-                "layer_a_time_ms": float(outcome.layer_a_time_ms),
+                "confidence_score": outcome.confidence_score,
+                "total_processing_time_ms": outcome.total_processing_time_ms,
+                "layer_a_time_ms": outcome.layer_a_time_ms,
                 "layer_b_time_ms": outcome.layer_b_time_ms,
                 "layer_c_time_ms": outcome.layer_c_time_ms,
                 "layer_d_time_ms": outcome.layer_d_time_ms,
@@ -54,10 +56,10 @@ def run_full_pipeline_pass():
         | ((results_df["true_label"] == 1) & (results_df["final_verdict"].isin(["block", "flag"])))
     ).sum()
     summary = {
-        "total_samples": int(len(results_df)),
-        "correct_predictions": int(correct),
-        "accuracy_percent": float((correct / len(results_df)) * 100 if len(results_df) else 0.0),
-        "avg_total_time_ms": float(results_df["total_processing_time_ms"].mean()),
+        "total_samples": len(results_df),
+        "correct_predictions": correct,
+        "accuracy_percent": (correct / len(results_df)) * 100 if len(results_df) else 0.0,
+        "avg_total_time_ms": results_df["total_processing_time_ms"].mean(),
         "decision_layer_distribution": results_df["decision_layer"].value_counts().to_dict(),
         "final_verdict_distribution": results_df["final_verdict"].value_counts().to_dict(),
         "results_csv": str(csv_path),

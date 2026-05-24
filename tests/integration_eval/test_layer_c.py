@@ -137,7 +137,7 @@ import pytest
 
 @pytest.mark.slow
 def test_layer_c():
-    test_texts, true_labels = load_test_data("datasets/barrikade_test.csv")
+    test_texts, true_labels = load_test_data(project_root / "datasets" / "barrikade_test.csv")
     
     # Use manual thresholds from settings.
     low, high = load_thresholds()

@@ -77,37 +77,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Run fast tests (everything except dataset-iterating heavies)
-        # Most tests in this repo synthesize inputs in tmp_path or mock the
-        # pipeline. A handful iterate the full datasets/barrikade_test.csv
-        # through the real PIPipeline and take hours on CPU — those are
-        # excluded by --ignore. The list is intentionally explicit rather
-        # than marker-based because the repo doesn't have a pytest marker
-        # convention yet. If you add a new dataset-iterating test, add it
-        # to the --ignore list here OR introduce a `@pytest.mark.heavy`
-        # convention and switch this to `-m "not heavy"`.
-        #
-        # Excluded for being heavy (each iterates the full 20K-row test CSV
-        # through real models, takes hours on CPU):
-        #   tests/layer_b/test_layer_b.py        — full-pass through Layer B
-        #   tests/layer_c/test_layer_c.py        — full-pass through Layer C
-        #   tests/layer_d/test_layer_d.py        — full-pass through Layer D
-        #   tests/test_pipeline_full_pass.py     — full PIPipeline over the
-        #                                          20K-row test CSV
-        #   tests/test_orchestrator.py           — same shape, full dataset
-        #                                          through pipeline.detect()
-        #   tests/layer_e/test_layer_e.py        — Layer E judge over dataset
-        #
+      - name: Run fast tests (unit and telemetry suites)
+        # With the new revamped test organization, fast unit tests and telemetry
+        # verification tests are isolated under tests/unit/ and tests/telemetry/.
+        # Slow evaluation tests are isolated under tests/integration_eval/.
+        # This completely eliminates the need for fragile file-based --ignore lists!
         env:
           PYTHONPATH: "."
         run: |
-          pytest -q tests/ \
-            --ignore=tests/layer_b/test_layer_b.py \
-            --ignore=tests/layer_c/test_layer_c.py \
-            --ignore=tests/layer_d/test_layer_d.py \
-            --ignore=tests/test_pipeline_full_pass.py \
-            --ignore=tests/test_orchestrator.py \
-            --ignore=tests/layer_e/test_layer_e.py
+          pytest -q tests/unit/ tests/telemetry/
 
   docker-build:
     name: Production Docker image build

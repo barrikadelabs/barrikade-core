@@ -20,7 +20,7 @@ import pytest
 @pytest.mark.slow
 def test_layer_b():
     
-    df = pd.read_csv("datasets/barrikade_test.csv")
+    df = pd.read_csv(project_root / "datasets" / "barrikade_test.csv")
     if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
         df = df.head(5)
     
