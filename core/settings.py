@@ -109,6 +109,7 @@ class Settings(BaseModel):
     ### Telemetry & Audit Configuration
     telemetry_enabled: bool = True
     telemetry_log_path: str = "test_results/barrikade_telemetry.jsonl"
+    telemetry_safe_sample_rate: float = 1.0
 
     ### Layer B (embedding-based contrastive signature engine)
     layer_b_embedding_model: str = "BAAI/bge-small-en-v1.5"

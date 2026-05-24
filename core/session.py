@@ -134,6 +134,10 @@ class WorkloadSession:
     # Tracking
     closed_at: datetime | None = None
 
+    # Identity Correlation
+    client_id: str | None = None
+    tenant_id: str | None = None
+
     def to_summary_dict(self) -> dict[str, Any]:
         """Lightweight summary without the full event log."""
         return {
@@ -149,6 +153,8 @@ class WorkloadSession:
             "delegation_chain": list(self.delegation_chain),
             "risk_budget_initial": self.risk_budget_initial,
             "risk_budget_remaining": self.risk_budget_remaining,
+            "client_id": self.client_id,
+            "tenant_id": self.tenant_id,
         }
 
 
@@ -170,6 +176,8 @@ class SessionStoreBackend(ABC):
         initial_permissions: list[str] | None = None,
         delegation_chain: list[str] | None = None,
         risk_budget: int | None = None,
+        client_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> WorkloadSession:
         ...
 
@@ -253,6 +261,8 @@ class InMemorySessionStore(SessionStoreBackend):
         initial_permissions: list[str] | None = None,
         delegation_chain: list[str] | None = None,
         risk_budget: int | None = None,
+        client_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> WorkloadSession:
         budget = risk_budget if risk_budget is not None else self._settings.default_risk_budget
         session = WorkloadSession(
@@ -264,6 +274,8 @@ class InMemorySessionStore(SessionStoreBackend):
             delegation_chain=list(delegation_chain or []),
             risk_budget_initial=budget,
             risk_budget_remaining=budget,
+            client_id=client_id,
+            tenant_id=tenant_id,
         )
         with self._lock:
             self._evict_expired()

@@ -85,7 +85,7 @@ class PIPipeline:
             confidence_score=confidence_score,
         )
 
-    def _emit_pipeline_telemetry(self, res, workload_id=None, trace_id=None, span_id=None):
+    def _emit_pipeline_telemetry(self, res, workload_id=None, trace_id=None, span_id=None, layer_errors=None):
         def _get_layer_verdict(layer_result):
             if layer_result is None:
                 return None
@@ -107,6 +107,7 @@ class PIPipeline:
             "input_hash": res.input_hash,
             "final_verdict": res.final_verdict.value,
             "decision_layer": res.decision_layer.value,
+            "layer_errors": layer_errors or [],
         }
         if res.layer_a_result is not None:
             payload["layer_a_verdict"] = _get_layer_verdict(res.layer_a_result)
@@ -148,6 +149,7 @@ class PIPipeline:
         metrics = {
             "total_processing_time_ms": res.total_processing_time_ms,
             "risk_score": _get_layer_risk_score(deciding_layer_result),
+            "error_count": len(layer_errors) if layer_errors else 0,
         }
         if res.layer_a_result is not None:
             metrics["layer_a_time_ms"] = res.layer_a_time_ms
@@ -160,7 +162,12 @@ class PIPipeline:
         if res.layer_e_result is not None:
             metrics["layer_e_time_ms"] = res.layer_e_time_ms
 
-        telemetry.emit(
+        # Inject snapshot of standard Four Golden Signals
+        metrics.update(telemetry.get_golden_signals())
+
+        is_anomalous = res.final_verdict in (FinalVerdict.BLOCK, FinalVerdict.FLAG)
+        telemetry.emit_sampled(
+            is_anomalous=is_anomalous,
             event_type="pipeline_run",
             workload_id=workload_id,
             trace_id=trace_id,
@@ -170,103 +177,116 @@ class PIPipeline:
         )
 
     def detect(self, input_text, workload_id=None, trace_id=None, span_id=None):
-        start_time = time.time()
-        input_hash = hashlib.sha256(input_text.encode()).hexdigest()[:16]
+        telemetry.record_pipeline_start()
+        had_error = False
+        layer_errors = []
+        try:
+            start_time = time.time()
+            input_hash = hashlib.sha256(input_text.encode()).hexdigest()[:16]
 
-        #Layer A
-        layer_a_result = self.layer_a_analyze(input_text)
-        analysis_text = layer_a_result.processed_text
+            #Layer A
+            layer_a_result = self.layer_a_analyze(input_text)
+            analysis_text = layer_a_result.processed_text
 
-        # Hard-block from Layer A (high-confidence flags)
-        if layer_a_result.get_verdict() == "block":
-            res = self._create_result(
-                input_hash, start_time, layer_a_result,
-                final_verdict=FinalVerdict.BLOCK,
-                decision_layer=DecisionLayer.LAYER_A,
-                confidence_score=layer_a_result.confidence_score,
+            # Hard-block from Layer A (high-confidence flags)
+            if layer_a_result.get_verdict() == "block":
+                res = self._create_result(
+                    input_hash, start_time, layer_a_result,
+                    final_verdict=FinalVerdict.BLOCK,
+                    decision_layer=DecisionLayer.LAYER_A,
+                    confidence_score=layer_a_result.confidence_score,
+                )
+                self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id, layer_errors=layer_errors)
+                return res
+
+            #Layer B
+            layer_b_result = self.layer_b_engine.detect(analysis_text) #type: ignore
+
+            # MALICIOUS signatures => block immediately
+            if layer_b_result.verdict == "block" or layer_b_result.verdict == "allow":
+                res = self._create_result(
+                    input_hash, start_time, layer_a_result,
+                    layer_b_result=layer_b_result,
+                    final_verdict=FinalVerdict(layer_b_result.verdict),
+                    decision_layer=DecisionLayer.LAYER_B,
+                    confidence_score=layer_b_result.confidence_score,
+                )
+                self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id, layer_errors=layer_errors)
+                return res
+
+            #Layer C
+            # Anything not blocked by Layer B is screened by the ML classifier.
+            layer_c_result = self.layer_c_classifier.predict(analysis_text)
+
+            if layer_c_result.verdict == "block" or layer_c_result.verdict == "allow":
+                res = self._create_result(
+                    input_hash, start_time, layer_a_result,
+                    layer_b_result=layer_b_result,
+                    layer_c_result=layer_c_result,
+                    final_verdict=FinalVerdict(layer_c_result.verdict),
+                    decision_layer=DecisionLayer.LAYER_C,
+                    confidence_score=layer_c_result.confidence_score,
+                )
+                self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id, layer_errors=layer_errors)
+                return res
+        
+            #Layer D
+            layer_d_result = self.layer_d_classifier.predict(analysis_text)
+
+            if layer_d_result.verdict == "block" or layer_d_result.verdict == "allow":
+                res = self._create_result(
+                    input_hash, start_time, layer_a_result,
+                    layer_b_result=layer_b_result,
+                    layer_c_result=layer_c_result,
+                    layer_d_result=layer_d_result,
+                    final_verdict=FinalVerdict(layer_d_result.verdict),
+                    decision_layer=DecisionLayer.LAYER_D,
+                    confidence_score=layer_d_result.confidence_score,
+                )
+                self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id, layer_errors=layer_errors)
+                return res
+
+            #Layer E
+            layer_e_start = time.time()
+            try:
+                layer_e_result = self.layer_e_judge.call_judge(analysis_text)
+            except Exception as e:
+                layer_errors.append({"layer": "E", "error": str(e)})
+                raise
+            layer_e_time_ms = (time.time() - layer_e_start) * 1000
+
+            layer_e_res = LayerEResult(
+                verdict=layer_e_result.decision,
+                rationale=layer_e_result.rationale,
+                model=layer_e_result.model,
+                no_think=layer_e_result.no_think,
+                raw_response=layer_e_result.raw_response,
+                processing_time_ms=layer_e_time_ms,
+                reasoning_trace=layer_e_result.reasoning_trace,
+                prompt_tokens=layer_e_result.prompt_tokens,
+                completion_tokens=layer_e_result.completion_tokens,
+                total_tokens=layer_e_result.total_tokens,
             )
-            self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id)
-            return res
 
-        #Layer B
-        layer_b_result = self.layer_b_engine.detect(analysis_text) #type: ignore
+            layer_e_verdict = FinalVerdict.BLOCK if layer_e_result.decision == "block" else FinalVerdict.ALLOW
 
-        # MALICIOUS signatures => block immediately
-        if layer_b_result.verdict == "block" or layer_b_result.verdict == "allow":
-            res = self._create_result(
-                input_hash, start_time, layer_a_result,
-                layer_b_result=layer_b_result,
-                final_verdict=FinalVerdict(layer_b_result.verdict),
-                decision_layer=DecisionLayer.LAYER_B,
-                confidence_score=layer_b_result.confidence_score,
-            )
-            self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id)
-            return res
-
-        #Layer C
-        # Anything not blocked by Layer B is screened by the ML classifier.
-        layer_c_result = self.layer_c_classifier.predict(analysis_text)
-
-        if layer_c_result.verdict == "block" or layer_c_result.verdict == "allow":
-            res = self._create_result(
-                input_hash, start_time, layer_a_result,
-                layer_b_result=layer_b_result,
-                layer_c_result=layer_c_result,
-                final_verdict=FinalVerdict(layer_c_result.verdict),
-                decision_layer=DecisionLayer.LAYER_C,
-                confidence_score=layer_c_result.confidence_score,
-            )
-            self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id)
-            return res
-    
-        #Layer D
-        layer_d_result = self.layer_d_classifier.predict(analysis_text)
-
-        if layer_d_result.verdict == "block" or layer_d_result.verdict == "allow":
             res = self._create_result(
                 input_hash, start_time, layer_a_result,
                 layer_b_result=layer_b_result,
                 layer_c_result=layer_c_result,
                 layer_d_result=layer_d_result,
-                final_verdict=FinalVerdict(layer_d_result.verdict),
-                decision_layer=DecisionLayer.LAYER_D,
-                confidence_score=layer_d_result.confidence_score,
+                layer_e_result=layer_e_res,
+                layer_e_time_ms=layer_e_time_ms,
+                final_verdict=layer_e_verdict,
+                decision_layer=DecisionLayer.LAYER_E,
+                confidence_score=1.0,  # LLM judge gives binary decisions
             )
-            self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id)
+            self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id, layer_errors=layer_errors)
             return res
-
-        #Layer E
-        layer_e_start = time.time()
-        layer_e_result = self.layer_e_judge.call_judge(analysis_text)
-        layer_e_time_ms = (time.time() - layer_e_start) * 1000
-
-        layer_e_res = LayerEResult(
-            verdict=layer_e_result.decision,
-            rationale=layer_e_result.rationale,
-            model=layer_e_result.model,
-            no_think=layer_e_result.no_think,
-            raw_response=layer_e_result.raw_response,
-            processing_time_ms=layer_e_time_ms,
-            reasoning_trace=layer_e_result.reasoning_trace,
-            prompt_tokens=layer_e_result.prompt_tokens,
-            completion_tokens=layer_e_result.completion_tokens,
-            total_tokens=layer_e_result.total_tokens,
-        )
-
-        layer_e_verdict = FinalVerdict.BLOCK if layer_e_result.decision == "block" else FinalVerdict.ALLOW
-
-        res = self._create_result(
-            input_hash, start_time, layer_a_result,
-            layer_b_result=layer_b_result,
-            layer_c_result=layer_c_result,
-            layer_d_result=layer_d_result,
-            layer_e_result=layer_e_res,
-            layer_e_time_ms=layer_e_time_ms,
-            final_verdict=layer_e_verdict,
-            decision_layer=DecisionLayer.LAYER_E,
-            confidence_score=1.0,  # LLM judge gives binary decisions
-        )
-        self._emit_pipeline_telemetry(res, workload_id, trace_id, span_id)
-        return res
+        except Exception:
+            had_error = True
+            raise
+        finally:
+            telemetry.record_pipeline_end(had_error=had_error)
 
     

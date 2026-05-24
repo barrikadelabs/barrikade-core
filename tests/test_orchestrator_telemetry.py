@@ -47,8 +47,8 @@ class TestOrchestratorTelemetry(unittest.TestCase):
         self.assertEqual(res.decision_layer, DecisionLayer.LAYER_A)
         
         # Check telemetry was emitted with expected arguments
-        mock_telemetry.emit.assert_called_once()
-        call_kwargs = mock_telemetry.emit.call_args[1]
+        mock_telemetry.emit_sampled.assert_called_once()
+        call_kwargs = mock_telemetry.emit_sampled.call_args[1]
         
         self.assertEqual(call_kwargs["event_type"], "pipeline_run")
         self.assertEqual(call_kwargs["workload_id"], "work-123")
@@ -136,8 +136,8 @@ class TestOrchestratorTelemetry(unittest.TestCase):
         self.assertEqual(res.layer_e_result.total_tokens, 120)
         
         # Assertions on telemetry
-        mock_telemetry.emit.assert_called_once()
-        call_kwargs = mock_telemetry.emit.call_args[1]
+        mock_telemetry.emit_sampled.assert_called_once()
+        call_kwargs = mock_telemetry.emit_sampled.call_args[1]
         
         self.assertEqual(call_kwargs["workload_id"], "w1")
         payload = call_kwargs["payload"]
