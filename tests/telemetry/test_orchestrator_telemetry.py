@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from unittest.mock import MagicMock, patch
 from core.orchestrator import PIPipeline
 from models.verdicts import DecisionLayer, FinalVerdict
@@ -11,6 +12,7 @@ def dummy_init(self):
     self.layer_d_classifier = MagicMock()
     self.layer_e_judge = MagicMock()
 
+@pytest.mark.telemetry
 @patch("core.orchestrator.PIPipeline.__init__", dummy_init)
 @patch("core.orchestrator.ensure_runtime_artifacts")
 @patch("core.layer_a.pipeline.analyze_text")

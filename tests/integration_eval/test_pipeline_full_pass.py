@@ -1,3 +1,9 @@
+import os
+import pytest
+
+if os.getenv("BARRIKADA_AUTO_DOWNLOAD_ARTIFACTS", "1") == "0":
+    pytest.skip("Auto-download disabled for tests.", allow_module_level=True)
+
 import json
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +14,10 @@ from core.orchestrator import PIPipeline
 
 
 def run_full_pipeline_pass():
+    import os
     df = pd.read_csv("datasets/barrikade_test.csv")
+    if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
+        df = df.head(5)
     pipeline = PIPipeline()
     results = []
 
@@ -58,5 +67,13 @@ def run_full_pipeline_pass():
     print(f"Saved summary to {summary_path}")
     return summary
 
+import pytest
+
+@pytest.mark.slow
+def test_pipeline_full_pass():
+    summary = run_full_pipeline_pass()
+    assert summary["total_samples"] > 0
+
 if __name__ == "__main__":
     run_full_pipeline_pass()
+

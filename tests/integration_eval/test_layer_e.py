@@ -16,8 +16,11 @@ TEST_PROMPT_LIMIT = 2000
 
 
 def load_test_data(csv_path):
+    import os
     df = pd.read_csv(csv_path)
-    if TEST_PROMPT_LIMIT > 0:
+    if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
+        df = df.head(5)
+    elif TEST_PROMPT_LIMIT > 0:
         df = df.head(TEST_PROMPT_LIMIT)
     return df["text"].tolist(), df["label"].tolist()
 
@@ -105,6 +108,9 @@ def evaluate_judge(judge, texts, labels):
     return {"total": total}
 
 
+import pytest
+
+@pytest.mark.slow
 def test_layer_e():
     test_texts, true_labels = load_test_data("datasets/barrikade_test.csv")
     judge = build_judge()

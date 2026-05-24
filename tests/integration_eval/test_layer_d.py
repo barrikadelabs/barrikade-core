@@ -29,7 +29,10 @@ def load_trained_thresholds_and_model_dir():
 
 
 def load_test_data(csv_path):
+    import os
     df = pd.read_csv(csv_path)
+    if not os.getenv("BARRIKADE_TEST_FULL_DATASET"):
+        df = df.head(5)
     return df["text"].tolist(), df["label"].tolist()
 
 
@@ -104,7 +107,12 @@ def evaluate_classifier(classifier, texts, labels):
     return {"total": total}
 
 
+import pytest
+
+@pytest.mark.slow
 def test_layer_d():
+    if not REPORT_PATH.exists():
+        pytest.skip(f"Trained thresholds and model dir report not found at {REPORT_PATH}. Skipping Layer D evaluation test.")
     test_texts, true_labels = load_test_data("datasets/barrikade_test.csv")
 
     low, high, model_dir = load_trained_thresholds_and_model_dir()
