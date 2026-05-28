@@ -1,0 +1,30 @@
+# Project Rules for Cursor
+
+This project enforces strict code style, git workflows, and commit guidelines. As an AI assistant, you MUST read and conform to these guidelines in all your generations and edits.
+
+## CENTRALIZED PROJECT RULES
+
+Please refer to and follow the rules documented in:
+1. **Conventional Commits**: See [conventional-commits.md](file:///Users/ishaan/Documents/Data%20Science/FYP/code/.github/rules/conventional-commits.md) for commit formatting.
+2. **Git Workflow**: See [git-workflow.md](file:///Users/ishaan/Documents/Data%20Science/FYP/code/.github/rules/git-workflow.md) for branch naming and commit trailers.
+3. **Python Code Style**: See [python-code-style.md](file:///Users/ishaan/Documents/Data%20Science/FYP/code/.github/rules/python-code-style.md) for Ruff styling and modern Python types.
+
+---
+
+## CURSOR SPECIFIC GUIDELINES
+
+### 1. Code Style Enforcement
+- Set your line length standard to **100 characters**.
+- Always use modern Python typing syntax (`list[str]`, `str | None` rather than `typing.List`, `typing.Optional`).
+- Run `ruff format` and `ruff check --fix` on any file you modify. If you edit files, ensure they are formatted before marking your task complete.
+- Ensure all `import` statements are strictly top-level (no local function imports except to untangle circular dependencies with a explanatory comment).
+
+### 2. Git & Commit Actions
+- When writing commit messages for the user or generating git instructions, make sure they strictly follow: `type(scope): description`.
+- Scopes are **REQUIRED**.
+- Headers must be lowercase and must not exceed **69 characters**.
+- If proposing/generating commits, always include the `-s` sign-off flag: `git commit -s -m "..."`.
+
+### 3. Context Awareness
+- This codebase runs on Python 3.10+ (recommend Python 3.11 for development).
+- Before editing files, review existing code structure to ensure your implementations match the design patterns of surrounding modules.
