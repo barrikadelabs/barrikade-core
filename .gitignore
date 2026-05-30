@@ -11,6 +11,7 @@
 /core/layer_b/signatures/embeddings/prompt_encoder/
 /core/layer_b/signatures/embeddings/prompt_encoder_onnx/
 /core/layer_b/signatures/embeddings/signature_encoder/
+/core/layer_b/outputs/
 /core/layer_c/outputs/*.joblib
 /core/layer_c/outputs/*.onnx
 /core/layer_c/outputs/releases/**/classifier.joblib
@@ -58,6 +59,9 @@ venv
 
 # Local test cache
 .pytest_cache/
+
+# Run logs
+*.log
 
 .venv-test
 venv-test
