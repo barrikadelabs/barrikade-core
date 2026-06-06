@@ -1,0 +1,5 @@
+# Build / packaging artifacts (produced by `python -m build`)
+build/
+dist/
+*.egg-info/
+__pycache__/
