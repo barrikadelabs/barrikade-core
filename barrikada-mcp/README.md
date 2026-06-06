@@ -89,7 +89,11 @@ block. Any of these launch forms work — pick one:
 > `WinError 2 (The system cannot find the file specified)` — the MCP client's
 > process launcher doesn't append `.exe`. Use the **full path** to
 > `...\Scripts\barrikada-mcp.exe`, or the `python -m barrikada_mcp` form
-> (`"command": "python", "args": ["-m", "barrikada_mcp"]`).
+> (`"command": "python", "args": ["-m", "barrikada_mcp"]`). App Control /
+> Smart App Control policies can also block pip's generated `.exe` shims
+> outright ("An Application Control policy has blocked this file") — the
+> `python -m` form sidesteps both issues, since it runs through the signed
+> `python.exe`.
 
 ### Claude Code
 
