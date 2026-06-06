@@ -1,0 +1,30 @@
+{
+  "$comment": "DRAFT MCP registry manifest. Replace YOUR_GH_USERNAME (must match the mcp-name marker in README.md), bump versions in lockstep with pyproject, and publish only after barrikada-mcp + barrikade are on PyPI. See README 'Publishing to the MCP registry'.",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.YOUR_GH_USERNAME/barrikada-mcp",
+  "description": "Prompt-injection detection for coding agents: screen untrusted text before acting on it.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/barrikadelabs/barrikade-core",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "barrikada-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "BARRIKADA_MCP_LOG_LEVEL",
+          "description": "Server log level on stderr (default WARNING).",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
