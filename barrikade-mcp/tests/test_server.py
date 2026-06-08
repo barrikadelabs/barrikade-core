@@ -1,4 +1,4 @@
-"""Unit tests for the barrikada-mcp server.
+"""Unit tests for the barrikade-mcp server.
 
 The detection pipeline is mocked, so these run without model artifacts. Async
 tool calls are driven with ``asyncio.run`` to avoid a pytest-asyncio dependency.
@@ -9,7 +9,7 @@ import threading
 import time
 from types import SimpleNamespace
 
-import barrikada_mcp.server as server
+import barrikade_mcp.server as server
 import pytest
 
 from models.verdicts import DecisionLayer, FinalVerdict
