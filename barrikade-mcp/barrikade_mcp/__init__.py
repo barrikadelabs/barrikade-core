@@ -1,8 +1,8 @@
-"""Barrikada MCP server.
+"""Barrikade MCP server.
 
-Exposes Barrikada prompt-injection detection over the Model Context Protocol.
+Exposes Barrikade prompt-injection detection over the Model Context Protocol.
 This package namespace is kept import-light; the server (which pulls in the
-heavy detection core) lives in ``barrikada_mcp.server``.
+heavy detection core) lives in ``barrikade_mcp.server``.
 
 Importing this package sets a few environment defaults *before* anything imports
 the detection core, so that (a) the core's import-time artifact bundle check does
@@ -18,7 +18,7 @@ import os
 __version__ = "0.1.0"
 
 # Applied before ``barrikade`` (and its torch/transformers/HF stack) is imported
-# by ``barrikada_mcp.server``. The package __init__ always runs first, so this is
+# by ``barrikade_mcp.server``. The package __init__ always runs first, so this is
 # the correct place to set them (server.py keeps imports at the top per lint).
 _ENV_DEFAULTS = {
     # Defer the core's artifact bundle check to lazy pipeline construction so a

@@ -3,18 +3,18 @@
   description, and the line below is the MCP registry ownership marker. Replace
   YOUR_GH_USERNAME so it matches the `name` in server.json exactly, then keep it
   in sync. It is a comment so it doesn't render on PyPI.
-  mcp-name: io.github.YOUR_GH_USERNAME/barrikada-mcp
+  mcp-name: io.github.YOUR_GH_USERNAME/barrikade-mcp
 -->
 
-# barrikada-mcp
+# barrikade-mcp
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes
-**Barrikada** prompt-injection detection to coding agents (Claude Code, Claude
+**Barrikade** prompt-injection detection to coding agents (Claude Code, Claude
 Desktop, Cursor, …). Point your agent at it and it gains a tool to screen
 untrusted text — tool output, retrieved documents, web pages, user input —
 **before** acting on it.
 
-It wraps the in-process Barrikada pipeline (`barrikade.PIPipeline`) and serves it
+It wraps the in-process Barrikade pipeline (`barrikade.PIPipeline`) and serves it
 over stdio. Detection runs locally; no data leaves your machine.
 
 ## The tool
@@ -35,30 +35,30 @@ over stdio. Detection runs locally; no data leaves your machine.
 
 > **Status:** the detection core (`barrikade`) is already published on PyPI, so
 > there is no core-dependency blocker. The only thing left for a clean
-> `pip install barrikada-mcp` is publishing *this* package to PyPI (the last task
+> `pip install barrikade-mcp` is publishing *this* package to PyPI (the last task
 > of issue #29). Until then, install from a checkout or the built wheel.
 
-**Once `barrikada-mcp` is published** (the `barrikade` core resolves from PyPI automatically):
+**Once `barrikade-mcp` is published** (the `barrikade` core resolves from PyPI automatically):
 
 ```bash
-pip install barrikada-mcp
+pip install barrikade-mcp
 # or isolated — recommended for a server a client launches repeatedly, so the
 # heavy ML deps never touch your project env:
-uv tool install barrikada-mcp      # persistent; exposes the `barrikada-mcp` command
-uvx barrikada-mcp                  # ephemeral
+uv tool install barrikade-mcp      # persistent; exposes the `barrikade-mcp` command
+uvx barrikade-mcp                  # ephemeral
 ```
 
 **Today (from a repo checkout or the built wheel):**
 
 ```bash
-pip install -e . && pip install -e barrikada-mcp        # editable, from the repo root
+pip install -e . && pip install -e barrikade-mcp        # editable, from the repo root
 # or build the wheel and install it (pulls `barrikade` from PyPI):
-python -m build barrikada-mcp && pip install barrikada-mcp/dist/*.whl
+python -m build barrikade-mcp && pip install barrikade-mcp/dist/*.whl
 ```
 
 > `torch` defaults to the large CUDA wheel on PyPI. The pipeline runs on CPU, so
 > install into a CPU-only environment to save ~700 MB, e.g.
-> `PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu pip install barrikada-mcp`.
+> `PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu pip install barrikade-mcp`.
 
 ## Model artifacts (one-time)
 
@@ -79,17 +79,17 @@ error telling you to run the command above.
 All clients use the same stdio launcher: a `command` plus an optional `env`
 block. Any of these launch forms work — pick one:
 
-- **`barrikada-mcp`** — the console script. Simplest, but the command must be on
+- **`barrikade-mcp`** — the console script. Simplest, but the command must be on
   the client's `PATH` (GUI apps often don't inherit your shell `PATH`).
-- **`python -m barrikada_mcp`** — robust when the script isn't on `PATH`; point
+- **`python -m barrikade_mcp`** — robust when the script isn't on `PATH`; point
   `command` at the venv's `python`.
-- **`uvx barrikada-mcp`** — isolated, once published.
+- **`uvx barrikade-mcp`** — isolated, once published.
 
-> **Windows:** launching the bare `barrikada-mcp` command can fail with
+> **Windows:** launching the bare `barrikade-mcp` command can fail with
 > `WinError 2 (The system cannot find the file specified)` — the MCP client's
 > process launcher doesn't append `.exe`. Use the **full path** to
-> `...\Scripts\barrikada-mcp.exe`, or the `python -m barrikada_mcp` form
-> (`"command": "python", "args": ["-m", "barrikada_mcp"]`). App Control /
+> `...\Scripts\barrikade-mcp.exe`, or the `python -m barrikade_mcp` form
+> (`"command": "python", "args": ["-m", "barrikade_mcp"]`). App Control /
 > Smart App Control policies can also block pip's generated `.exe` shims
 > outright ("An Application Control policy has blocked this file") — the
 > `python -m` form sidesteps both issues, since it runs through the signed
@@ -98,13 +98,13 @@ block. Any of these launch forms work — pick one:
 ### Claude Code
 
 ```bash
-claude mcp add barrikada -- barrikada-mcp
+claude mcp add barrikade -- barrikade-mcp
 ```
 
 Options go **before** the name; `--` separates the server name from its launch
 command. Pick a scope with `--scope` (`local` default · `project` writes a
 committed `.mcp.json` · `user` applies to all your projects). Manage with
-`claude mcp list` / `claude mcp get barrikada` / `claude mcp remove barrikada`, or
+`claude mcp list` / `claude mcp get barrikade` / `claude mcp remove barrikade`, or
 `/mcp` in a session.
 
 ### Claude Desktop
@@ -117,8 +117,8 @@ supported).
 ```json
 {
   "mcpServers": {
-    "barrikada": {
-      "command": "barrikada-mcp"
+    "barrikade": {
+      "command": "barrikade-mcp"
     }
   }
 }
@@ -136,8 +136,8 @@ Project-level `<project-root>/.cursor/mcp.json` (takes precedence) or global
 ```json
 {
   "mcpServers": {
-    "barrikada": {
-      "command": "barrikada-mcp"
+    "barrikade": {
+      "command": "barrikade-mcp"
     }
   }
 }
@@ -169,26 +169,26 @@ applies if you set one.
 ## Development
 
 ```bash
-pip install -e . && pip install -e barrikada-mcp
-pytest barrikada-mcp -q          # unit tests mock the pipeline (no artifacts needed)
-python -m barrikada_mcp          # run the server on stdio (Ctrl-C to stop)
+pip install -e . && pip install -e barrikade-mcp
+pytest barrikade-mcp -q          # unit tests mock the pipeline (no artifacts needed)
+python -m barrikade_mcp          # run the server on stdio (Ctrl-C to stop)
 ```
 
 ## Publishing to the MCP registry (maintainers, future)
 
 The [official registry](https://modelcontextprotocol.io/registry/quickstart)
 (in preview as of 2026) stores **metadata only** — the package must be on PyPI
-first. The `barrikade` core is already on PyPI, so this just needs `barrikada-mcp`
+first. The `barrikade` core is already on PyPI, so this just needs `barrikade-mcp`
 itself published:
 
-1. Publish `barrikada-mcp` to PyPI (`python -m build` → `twine upload`). Ensure
+1. Publish `barrikade-mcp` to PyPI (`python -m build` → `twine upload`). Ensure
    the `mcp-name:` marker at the top of this README matches the `server.json`
    `name`.
 2. Install the `mcp-publisher` CLI (`brew install mcp-publisher`, or a prebuilt
    binary from the registry releases page).
 3. `mcp-publisher init` to scaffold `server.json` (a draft is committed here),
-   then fill `name` (`io.github.<your-username>/barrikada-mcp`), `version`, and
-   the `packages[]` entry (`registryType: "pypi"`, `identifier: "barrikada-mcp"`,
+   then fill `name` (`io.github.<your-username>/barrikade-mcp`), `version`, and
+   the `packages[]` entry (`registryType: "pypi"`, `identifier: "barrikade-mcp"`,
    `runtimeHint: "uvx"`, `transport: { "type": "stdio" }`).
 4. `mcp-publisher login github` (device-code flow), then `mcp-publisher publish`.
-5. Verify: `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.<your-username>/barrikada-mcp"`.
+5. Verify: `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.<your-username>/barrikade-mcp"`.

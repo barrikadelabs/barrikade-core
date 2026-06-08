@@ -3,17 +3,17 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "barrikada-mcp"
+name = "barrikade-mcp"
 version = "0.1.0"
-description = "Model Context Protocol server exposing Barrikada prompt-injection detection to coding agents."
+description = "Model Context Protocol server exposing Barrikade prompt-injection detection to coding agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Barrikada" }]
+authors = [{ name = "Barrikade" }]
 dependencies = [
   "mcp>=1.27.1",
   # Detection core. NOTE the distribution name is "barrikade" (no second 'a'),
-  # which is distinct from this package, "barrikada-mcp". The core is not yet on
+  # which is distinct from this package, "barrikade-mcp". The core is not yet on
   # PyPI — see README "Install" for the interim editable/git install. Do NOT
   # inline a `barrikade @ git+https://...` URL here: PyPI rejects direct-URL
   # dependencies in uploaded distribution metadata, which would block publishing.
@@ -45,7 +45,7 @@ Repository = "https://github.com/barrikadelabs/barrikade-core"
 Issues = "https://github.com/barrikadelabs/barrikade-core/issues"
 
 [project.scripts]
-barrikada-mcp = "barrikada_mcp.server:main"
+barrikade-mcp = "barrikade_mcp.server:main"
 
 [tool.setuptools.packages.find]
-include = ["barrikada_mcp", "barrikada_mcp.*"]
+include = ["barrikade_mcp", "barrikade_mcp.*"]

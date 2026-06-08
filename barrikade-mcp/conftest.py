@@ -1,4 +1,4 @@
-"""Test bootstrap for the barrikada-mcp package.
+"""Test bootstrap for the barrikade-mcp package.
 
 Makes both the MCP package (this dir) and the detection core (repo root, for
 ``barrikade`` / ``models``) importable without an editable install, and pins the
