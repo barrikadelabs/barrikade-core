@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from core.orchestrator import PIPipeline
@@ -14,6 +15,13 @@ from core.settings import Settings
 from models.verdicts import InputProvenance
 from core.__version__ import __version__
 
+# Configure logging at startup so that internal core.artifacts and other
+# module loggers have a default stream handler configured and print progress to stdout.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 log = logging.getLogger(__name__)
 
 @dataclass
@@ -141,6 +149,14 @@ app = FastAPI(
     version=__version__,
     description="Production API for the Barrikade detection pipeline.",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

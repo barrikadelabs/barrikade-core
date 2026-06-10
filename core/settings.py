@@ -102,6 +102,16 @@ class Settings(BaseModel):
             default_path,
         )
 
+    @property
+    def max_download_workers(self) -> int:
+        val = os.getenv("BARRIKADA_MAX_DOWNLOAD_WORKERS")
+        if val:
+            try:
+                return int(val)
+            except ValueError:
+                pass
+        return 8
+
     # Models are centrally managed under `core/models/` (see
     # `BARRIKADA_CORE_MODELS_DIR` override). For hosting details,
     # refer to `docs/MODEL_HOSTING.md`.

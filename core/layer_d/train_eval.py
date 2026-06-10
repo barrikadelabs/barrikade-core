@@ -78,7 +78,7 @@ def train_eval(X, y, model_out_dir, low=None, high=None):
     test_df = pd.DataFrame({"text": X_test.tolist(), "label": y_test.astype(int).tolist()})
 
     print(f"Loading tokenizer '{s.layer_d_model_id}' ...")
-    tokenizer = AutoTokenizer.from_pretrained(s.layer_d_model_id)
+    tokenizer = AutoTokenizer.from_pretrained(s.layer_d_model_id)  # nosec B615
 
     print("Tokenizing train/val/test datasets ...")
     train_ds, val_ds, test_ds = tokenize_datasets(

@@ -25,7 +25,7 @@ from typing import Dict, Iterable, List, Tuple
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORE_DIR = REPO_ROOT / "core"
 MODELS_DIR = CORE_DIR / "models"
 
@@ -263,12 +263,45 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _format_size(bytes_count: int) -> str:
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes_count < 1024.0:
+            return f"{bytes_count:.2f} {unit}"
+        bytes_count /= 1024.0
+    return f"{bytes_count:.2f} GB"
+
+
+def create_bundle_archive(models_dir: Path, output_archive_path: Path, include_manifest: bool = True):
+    import tarfile
+    logger.info("Creating compressed bundle archive at %s...", output_archive_path)
+    try:
+        with tarfile.open(output_archive_path, "w:gz") as tar:
+            for item in sorted(models_dir.rglob("*")):
+                if not item.is_file():
+                    continue
+                if "archives" in item.parts:
+                    continue
+                if not include_manifest and item.name == "manifest.json":
+                    continue
+                if item == output_archive_path:
+                    continue
+                
+                # Add to tar under relative name
+                rel_name = item.relative_to(models_dir)
+                tar.add(item, arcname=str(rel_name))
+        logger.info("✓ Compressed archive created successfully (%s)", _format_size(output_archive_path.stat().st_size))
+    except Exception as e:
+        logger.error("✗ Failed to create compressed archive: %s", e)
+        raise
+
+
 def generate_bundle_manifest(
     *,
     bundle_version: str,
     base_url: str | None = None,
     prefix: str | None = None,
     include_manifest: bool = False,
+    has_archive: bool = False,
 ) -> Dict:
     """Generate a manifest for the bundled models (SDK download format)."""
     manifest = {
@@ -284,6 +317,8 @@ def generate_bundle_manifest(
             continue
         if "archives" in file_path.parts:
             continue
+        if file_path.name == "bundle.tar.gz":
+            continue
 
         rel_path = file_path.relative_to(MODELS_DIR).as_posix()
         manifest["files"].append({
@@ -293,6 +328,9 @@ def generate_bundle_manifest(
 
     if base_url:
         manifest["base_url"] = base_url
+        if has_archive:
+            manifest["bundle_url"] = f"{base_url.rstrip('/')}/bundle.tar.gz"
+            manifest["archive_url"] = f"{base_url.rstrip('/')}/bundle.tar.gz"
     if prefix:
         manifest["prefix"] = prefix
 
@@ -341,6 +379,11 @@ def main():
         action="store_true",
         help="Include manifest.json itself in the manifest files list.",
     )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Compress the bundled models into a single bundle.tar.gz archive.",
+    )
     
     args = parser.parse_args()
     
@@ -373,6 +416,7 @@ def main():
             base_url=args.base_url,
             prefix=args.prefix,
             include_manifest=args.include_manifest,
+            has_archive=args.compress,
         )
         manifest_path = Path(args.manifest).resolve()
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -387,6 +431,14 @@ def main():
             )
         except ValueError:
             logger.info("Manifest saved to: %s", manifest_path)
+            
+        # Create compressed archive if requested
+        if args.compress:
+            if not args.dry_run:
+                archive_path = MODELS_DIR / "bundle.tar.gz"
+                create_bundle_archive(MODELS_DIR, archive_path, include_manifest=True)
+            else:
+                logger.info("[DRY RUN] Would create compressed archive bundle.tar.gz")
     
     logger.info("\n%s", "=" * 60)
     logger.info("SUMMARY")

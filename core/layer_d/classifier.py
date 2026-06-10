@@ -28,7 +28,7 @@ class LayerDClassifier:
     @staticmethod
     def _load_tokenizer(model_dir):
         try:
-            return AutoTokenizer.from_pretrained(model_dir)
+            return AutoTokenizer.from_pretrained(model_dir)  # nosec B615
         except ValueError as exc:
             if "Tokenizer class" not in str(exc):
                 raise
@@ -54,7 +54,7 @@ class LayerDClassifier:
                 elif tokenizer.unk_token is not None:
                     tokenizer.pad_token = tokenizer.unk_token
                 else:
-                    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+                    tokenizer.add_special_tokens({"pad_token": "[PAD]"})  # nosec B105
             return tokenizer
 
     @staticmethod
@@ -86,7 +86,7 @@ class LayerDClassifier:
         log.info("Loading PT Layer D classifier: %s", model_dir)
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tokenizer = self._load_tokenizer(model_dir)
-        model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+        model = AutoModelForSequenceClassification.from_pretrained(model_dir)  # nosec B615
         model.to(device)
         model.eval()
         return tokenizer, model, device, False

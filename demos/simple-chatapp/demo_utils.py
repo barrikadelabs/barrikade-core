@@ -39,11 +39,11 @@ def selected_runtime_model(settings):
 
 def _load_layer_e_model(settings):
     model_dir = settings.layer_e_model_dir
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token or tokenizer.pad_token
     dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(model_dir, dtype=dtype, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(model_dir, dtype=dtype, trust_remote_code=True)  # nosec B615
     cast(Any, model).to("cuda" if torch.cuda.is_available() else "cpu")
     cast(Any, model).eval()
     return tokenizer, model

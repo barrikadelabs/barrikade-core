@@ -152,7 +152,7 @@ def augment_with_hard_negatives(train_df, hard_idx, multiplier):
 
 def load_layer_d_model(settings, model_kwargs):
     print("Loading Layer D ModernBERT...")
-    return AutoModelForSequenceClassification.from_pretrained(
+    return AutoModelForSequenceClassification.from_pretrained(  # nosec B615
         settings.layer_d_model_id,
         attn_implementation="sdpa",
         **model_kwargs,

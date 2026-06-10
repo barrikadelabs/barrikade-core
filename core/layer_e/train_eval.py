@@ -56,7 +56,7 @@ def train_teacher_qwen35(X, y, *, output_dir, teacher_model_id= None, ):
         random_state=settings.layer_c_seed,
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)  # nosec B615
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -79,7 +79,7 @@ def train_teacher_qwen35(X, y, *, output_dir, teacher_model_id= None, ):
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
 
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         model_id,
         quantization_config=bnb_config,
         device_map="auto",

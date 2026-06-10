@@ -228,9 +228,10 @@ def download_file_from_gcs(
     
     try:
         import requests
+        import time
         # Use direct HTTPS download for public buckets (no authentication needed)
         url = f"https://storage.googleapis.com/{bucket_name}/{blob_path}"
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=120, stream=True)
         
         if response.status_code == 404:
             raise ValueError(f"Blob not found in GCS: {blob_path}")
@@ -239,8 +240,32 @@ def download_file_from_gcs(
         elif response.status_code != 200:
             raise ValueError(f"HTTP error {response.status_code}: {response.reason}")
         
+        total_size = int(response.headers.get("content-length", 0))
+        downloaded = 0
+        last_pct = 0
+        last_log_time = 0.0
+        
         with open(local_path, 'wb') as f:
-            f.write(response.content)
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    
+                    if total_size > 0:
+                        pct = int((downloaded / total_size) * 100)
+                        now = time.time()
+                        # Log every 10% progress increase, or every 5 seconds, or on complete
+                        if pct >= last_pct + 10 or now - last_log_time >= 5.0 or downloaded == total_size:
+                            logger.info(
+                                f"  → Progress: {downloaded / (1024 * 1024):.1f} MB / {total_size / (1024 * 1024):.1f} MB ({pct}%)"
+                            )
+                            last_pct = pct
+                            last_log_time = now
+                    else:
+                        now = time.time()
+                        if now - last_log_time >= 5.0 or downloaded == len(chunk):
+                            logger.info(f"  → Downloaded: {downloaded / (1024 * 1024):.1f} MB")
+                            last_log_time = now
         
         logger.info(f"Successfully downloaded: {local_path}")
         return True

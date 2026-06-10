@@ -80,7 +80,7 @@ Instruction:"""
         instruction = instruction.split('\n')[0].strip()
         
         # Inject using random pattern
-        pattern = random.choice(self.INJECTION_PATTERNS)
+        pattern = random.choice(self.INJECTION_PATTERNS)  # nosec B311
         injection = pattern.format(instruction=instruction)
         
         # Combine

@@ -24,7 +24,7 @@ _EMB_CACHE_DIR = Path(__file__).resolve().parent / "outputs" / ".cache" / "embed
 
 
 def _emb_cache_path(texts, model_name):
-    h = hashlib.md5(model_name.encode())
+    h = hashlib.md5(model_name.encode(), usedforsecurity=False)
     for t in texts:
         h.update(t.encode())
     return _EMB_CACHE_DIR / f"{h.hexdigest()}.npy"

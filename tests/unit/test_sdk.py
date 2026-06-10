@@ -8,6 +8,8 @@ from core.artifacts import (
     ArtifactDownloadError,
     download_runtime_artifacts,
     ensure_runtime_artifacts,
+    _extract_archive,
+    _download_url_to_path,
 )
 from core.orchestrator import PIPipeline as CorePIPipeline
 from core.settings import Settings
@@ -129,4 +131,53 @@ def test_public_sdk_exports_stateful_security():
     assert barrikade.InputProvenance is CoreInputProvenance
     assert barrikade.Intervention is CoreIntervention
     assert barrikade.IncidentReport is CoreIncidentReport
+
+
+def test_extract_archive(tmp_path):
+    import tarfile
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    
+    # Create a mock tar.gz archive
+    archive_path = tmp_path / "test.tar.gz"
+    test_file = tmp_path / "test_file.txt"
+    test_file.write_text("hello archive")
+    
+    with tarfile.open(archive_path, "w:gz") as tar:
+        tar.add(test_file, arcname="test_file.txt")
+        
+    extracted_root = _extract_archive(archive_path, dest_dir)
+    assert extracted_root == dest_dir
+    assert (dest_dir / "test_file.txt").exists()
+    assert (dest_dir / "test_file.txt").read_text() == "hello archive"
+
+
+def test_download_url_to_path_resumable(monkeypatch, tmp_path):
+    from unittest.mock import MagicMock
+    local_path = tmp_path / "downloaded.bin"
+    
+    # Create a partial local file
+    local_path.write_text("part1")
+    assert local_path.stat().st_size == 5
+
+    requested_headers = []
+
+    def mock_http_get(url, stream=True, headers=None):
+        requested_headers.append(headers)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 206
+        mock_resp.headers = {"Content-Length": "5"}
+        mock_resp.iter_content.return_value = [b"part2"]
+        return mock_resp
+
+    monkeypatch.setattr("core.artifacts._http_get", mock_http_get)
+
+    _download_url_to_path("https://example.com/file.bin", local_path, label="test")
+
+    # Assert correct headers were sent
+    assert len(requested_headers) == 1
+    assert requested_headers[0]["Range"] == "bytes=5-"
+    
+    # Assert file was correctly appended to
+    assert local_path.read_text() == "part1part2"
 

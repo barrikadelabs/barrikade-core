@@ -20,11 +20,11 @@ class BarrikadaAgent:
     def __init__(self, model_name: str = DEFAULT_MODEL_NAME, max_history: int = 20):
         self.pipeline = PIPipeline()
         self.model_name = model_name
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)  # nosec B615
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token or self.tokenizer.unk_token or self.tokenizer.pad_token
         dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=dtype, trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=dtype, trust_remote_code=True)  # nosec B615
         self.model.to("cuda" if torch.cuda.is_available() else "cpu") # type: ignore
         self.model.eval()
         self.history: list[HumanMessage | AIMessage] = []

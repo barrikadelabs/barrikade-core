@@ -19,6 +19,7 @@ Note:
 """
 
 import argparse
+import os
 import json
 import logging
 import shutil
@@ -34,7 +35,7 @@ import gcs_utils
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORE_DIR = REPO_ROOT / "core"
 MODELS_DIR = CORE_DIR / "models"
 GCS_MODELS_PREFIX = "models"
@@ -67,7 +68,6 @@ def backup_local_models(layer_name: str) -> bool:
         for file_path in files:
             rel_path = file_path.relative_to(layer_dir)
             dest_path = backup_dir / rel_path
-            
             dest_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(file_path, dest_path)
         
@@ -79,7 +79,7 @@ def backup_local_models(layer_name: str) -> bool:
         return False
 
 
-def list_gcs_models(bucket_name: str, layer_name: str, version: str = "latest") -> List[str]:
+def list_gcs_models(bucket_name: str, layer_name: str, version: str = "latest") -> List[dict]:
     """List available models in GCS for a layer."""
     try:
         client = gcs_utils.get_gcs_client(anonymous_only=True)
@@ -99,7 +99,10 @@ def list_gcs_models(bucket_name: str, layer_name: str, version: str = "latest") 
                 continue
             if blob.name.endswith("/"):
                 continue
-            blobs.append(blob.name)
+            blobs.append({
+                "name": blob.name,
+                "size": blob.size,
+            })
         
         return blobs
     
@@ -114,9 +117,10 @@ def download_layer(
     version: str = "latest",
     archive_old: bool = True,
     validate: bool = True,
+    max_workers: int = 8,
 ):
     """
-    Download all files for a given layer from GCS.
+    Download all all files for a given layer from GCS in parallel.
     
     Returns:
         Dictionary with download results
@@ -146,24 +150,43 @@ def download_layer(
     
     logger.info(f"  Found {len(gcs_files)} file(s) in GCS")
     
-    # Download files
+    # Download files in parallel
     try:
-        for gcs_path in gcs_files:
-            # Reconstruct local path
-            # Example: models/layer_b/embeddings/model.faiss -> embeddings/model.faiss
-            # Skip both "models/" and the layer prefix
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+        
+        lock = threading.Lock()
+        
+        def download_single(gcs_file_info):
+            gcs_path = gcs_file_info["name"]
+            gcs_size = gcs_file_info["size"]
             parts = gcs_path.split("/")
             rel_path = "/".join(parts[2:])  # Skip "models" and layer_name
             local_path = layer_dir / rel_path
             
+            # Fast-path: Check if existing file is up-to-date and reuse it
+            if local_path.exists() and local_path.stat().st_size == gcs_size:
+                logger.info(f"  Skipping (up-to-date): {gcs_path}")
+                with lock:
+                    result["files_downloaded"] += 1
+                return
+            
             try:
-                logger.debug(f"  Downloading: {gcs_path}")
+                logger.info(f"  Downloading: {gcs_path}")
                 gcs_utils.download_file_from_gcs(bucket_name, gcs_path, local_path)
-                result["files_downloaded"] += 1
+                with lock:
+                    result["files_downloaded"] += 1
             except Exception as e:
                 error_msg = f"Failed to download {gcs_path}: {e}"
                 logger.error(f"  ✗ {error_msg}")
-                result["errors"].append(error_msg)
+                with lock:
+                    result["errors"].append(error_msg)
+        
+        logger.info(f"  Downloading files using {max_workers} parallel workers...")
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(download_single, gcs_file) for gcs_file in gcs_files]
+            for future in as_completed(futures):
+                future.result()
         
         result["success"] = len(result["errors"]) == 0
         
@@ -188,8 +211,9 @@ def download_all_layers(
     version: str = "latest",
     archive_old: bool = True,
     validate: bool = True,
+    max_workers: int = 8,
 ) -> Dict[str, Dict]:
-    """Download all or specified layers."""
+    """Download all or specified layers in parallel."""
     
     if layers is None:
         layers = ["layer_b", "layer_c", "layer_d", "layer_e"]
@@ -207,6 +231,7 @@ def download_all_layers(
             version=version,
             archive_old=archive_old,
             validate=validate,
+            max_workers=max_workers,
         )
     
     return results
@@ -296,6 +321,12 @@ def main():
         type=Path,
         help="Save download manifest to this file (JSON)",
     )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=int(os.getenv("BARRIKADA_MAX_DOWNLOAD_WORKERS", "8")),
+        help="Number of concurrent download workers (default: 8)",
+    )
     
     args = parser.parse_args()
     
@@ -317,6 +348,7 @@ def main():
         version=args.version,
         archive_old=args.archive_old,
         validate=args.validate,
+        max_workers=args.max_workers,
     )
     
     # Print summary

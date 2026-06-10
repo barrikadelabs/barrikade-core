@@ -33,7 +33,7 @@ import gcs_utils
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORE_DIR = REPO_ROOT / "core"
 MODELS_DIR = CORE_DIR / "models"
 
@@ -276,6 +276,23 @@ def main():
         type=Path,
         help="Save upload manifest to this file (JSON)",
     )
+    parser.add_argument(
+        "--create-archive",
+        action="store_true",
+        help="Create and upload a compressed bundle.tar.gz archive containing all models.",
+    )
+    parser.add_argument(
+        "--upload-manifest",
+        action="store_true",
+        default=True,
+        help="Upload the bundle manifest.json to GCS (default: true).",
+    )
+    parser.add_argument(
+        "--no-upload-manifest",
+        dest="upload_manifest",
+        action="store_false",
+        help="Do not upload the manifest.json.",
+    )
     
     args = parser.parse_args()
     
@@ -301,6 +318,54 @@ def main():
         archive=args.archive,
     )
     
+    # Create and upload compressed archive if requested
+    if args.create_archive:
+        archive_path = MODELS_DIR / "bundle.tar.gz"
+        if not args.dry_run:
+            import tarfile
+            logger.info("Creating compressed bundle archive at %s...", archive_path)
+            try:
+                with tarfile.open(archive_path, "w:gz") as tar:
+                    for item in sorted(MODELS_DIR.rglob("*")):
+                        if not item.is_file():
+                            continue
+                        if "archives" in item.parts:
+                            continue
+                        if item == archive_path:
+                            continue
+                        rel_name = item.relative_to(MODELS_DIR)
+                        tar.add(item, arcname=str(rel_name))
+                logger.info("✓ Archive created successfully. Size: %d bytes", archive_path.stat().st_size)
+                
+                # Upload to GCS
+                blob_path = f"{GCS_MODELS_PREFIX}/bundle.tar.gz"
+                logger.info("Uploading bundle archive to gs://%s/%s...", args.bucket, blob_path)
+                gcs_utils.upload_file_to_gcs(archive_path, args.bucket, blob_path)
+                logger.info("✓ Bundle archive uploaded successfully.")
+            except Exception as e:
+                logger.error("✗ Failed to create or upload archive: %s", e)
+                return 1
+        else:
+            logger.info(f"[DRY RUN] Would create and upload compressed bundle archive to gs://{args.bucket}/{GCS_MODELS_PREFIX}/bundle.tar.gz")
+
+    # Upload manifest.json if requested
+    if args.upload_manifest:
+        manifest_path = MODELS_DIR / "manifest.json"
+        if manifest_path.exists():
+            if not args.dry_run:
+                blob_path = f"{GCS_MODELS_PREFIX}/manifest.json"
+                logger.info("Uploading manifest.json to gs://%s/%s...", args.bucket, blob_path)
+                try:
+                    gcs_utils.upload_file_to_gcs(manifest_path, args.bucket, blob_path)
+                    logger.info("✓ manifest.json uploaded successfully.")
+                except Exception as e:
+                    logger.error("✗ Failed to upload manifest.json: %s", e)
+                    return 1
+            else:
+                logger.info(f"[DRY RUN] Would upload manifest.json to gs://{args.bucket}/{GCS_MODELS_PREFIX}/manifest.json")
+        else:
+            logger.warning("manifest.json not found at %s. Skipping upload.", manifest_path)
+            
     # Print summary
     logger.info(f"\n{'='*60}")
     logger.info("UPLOAD SUMMARY")

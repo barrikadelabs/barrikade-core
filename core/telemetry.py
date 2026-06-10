@@ -94,10 +94,10 @@ class TelemetryEngine:
         # Deterministic sampling based on trace_id for consistency
         norm_trace = self._normalize_trace_id(trace_id)
         if norm_trace:
-            hash_val = int(hashlib.md5(norm_trace.encode()).hexdigest()[:8], 16)
+            hash_val = int(hashlib.md5(norm_trace.encode(), usedforsecurity=False).hexdigest()[:8], 16)
             return (hash_val / 0xFFFFFFFF) < rate
 
-        return random.random() < rate
+        return random.random() < rate  # nosec B311
 
     def emit_sampled(
         self,

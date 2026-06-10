@@ -84,7 +84,7 @@ class TestbedGenerator:
     
     def _generate_benign(self, index):
         """Generate one benign tool using LLM."""
-        category = random.choice(self.CATEGORIES)
+        category = random.choice(self.CATEGORIES)  # nosec B311
         tool_name = f"Tool_{index:03d}"
         
         description = self.factory.create_benign_tool(category, tool_name)
@@ -100,7 +100,7 @@ class TestbedGenerator:
     
     def _generate_malicious(self, index):
         """Generate one malicious tool using LLM."""
-        category = random.choice(self.CATEGORIES)
+        category = random.choice(self.CATEGORIES)  # nosec B311
         tool_name = f"MalTool_{index:03d}"
         
         target_behaviors = [
@@ -110,7 +110,7 @@ class TestbedGenerator:
             "exfiltrate information",
             "escalate privileges"
         ]
-        target = random.choice(target_behaviors)
+        target = random.choice(target_behaviors)  # nosec B311
         
         description = self.factory.create_malicious_tool(
             category, tool_name, target

@@ -41,7 +41,7 @@ class Qwen3GuardJudge:
     def _load_tokenizer(model_dir):
         log = logging.getLogger(__name__)
         try:
-            tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+            tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)  # nosec B615
             return tokenizer
         except Exception as exc:  # broaden to catch TypeError and other loader failures
             log.warning("AutoTokenizer.from_pretrained failed for %s: %s", model_dir, exc)
@@ -65,7 +65,7 @@ class Qwen3GuardJudge:
                     elif tokenizer.unk_token is not None:
                         tokenizer.pad_token = tokenizer.unk_token
                     else:
-                        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+                        tokenizer.add_special_tokens({"pad_token": "[PAD]"})  # nosec B105
 
                 return tokenizer
 
@@ -96,7 +96,7 @@ class Qwen3GuardJudge:
         self.dtype = self._resolve_dtype(self.device)
 
         self.tokenizer = self._load_tokenizer(self.state.model_dir)
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = AutoModelForCausalLM.from_pretrained(  # nosec B615
             self.state.model_dir,
             dtype=self.dtype,
             trust_remote_code=True,

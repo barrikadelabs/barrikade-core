@@ -23,7 +23,7 @@ def would_reach_layer_c(layer_a_result, layer_b_result):
 def _cache_key(csv_path):
     """Produce a deterministic cache key from the CSV path + file content hash."""
     p = Path(csv_path)
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)
     h.update(str(p.resolve()).encode())
     # Hash on file size + first/last 8 KB to avoid reading the whole file
     stat = p.stat()

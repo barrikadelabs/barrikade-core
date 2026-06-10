@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Iterable
 from uuid import uuid4
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.settings import Settings
 
@@ -282,8 +283,29 @@ def _download_gcs_file(
 
 
 def _download_url_to_path(url: str, local_path: Path, *, label: str | None = None) -> None:
-    response = _http_get(url, stream=True)
-    if response.status_code != 200:
+    headers = {}
+    existing_size = 0
+    mode = "wb"
+    
+    if local_path.exists():
+        existing_size = local_path.stat().st_size
+        if existing_size > 0:
+            headers["Range"] = f"bytes={existing_size}-"
+            mode = "ab"
+
+    response = _http_get(url, stream=True, headers=headers)
+    
+    # If range is not satisfiable, it usually means we already have the whole file.
+    if response.status_code == 416:
+        log.info("Range not satisfiable for %s; assuming file is fully downloaded.", local_path.name)
+        return
+
+    # If the server ignores the Range header (returns 200 instead of 206), fallback to full write
+    if response.status_code == 200:
+        mode = "wb"
+        existing_size = 0
+    elif response.status_code != 206:
+        # Standard error handling
         raise ArtifactDownloadError(
             f"Failed to download {url}: HTTP {response.status_code} {response.reason}"
         )
@@ -293,13 +315,19 @@ def _download_url_to_path(url: str, local_path: Path, *, label: str | None = Non
     if content_length:
         try:
             total_bytes = int(content_length)
+            if response.status_code == 206:
+                total_bytes += existing_size
         except ValueError:
             total_bytes = None
 
     local_path.parent.mkdir(parents=True, exist_ok=True)
     progress = _DownloadProgress(label or local_path.name, total_bytes, log)
+    
+    if existing_size > 0 and response.status_code == 206:
+        progress.update(existing_size)
+        
     try:
-        with local_path.open("wb") as handle:
+        with local_path.open(mode) as handle:
             for chunk in response.iter_content(chunk_size=_DOWNLOAD_CHUNK_SIZE):
                 if chunk:
                     handle.write(chunk)
@@ -339,7 +367,7 @@ def _resolve_manifest_files(manifest: dict) -> list[dict]:
     return []
 
 
-def _http_get(url: str, *, stream: bool = False):
+def _http_get(url: str, *, stream: bool = False, headers: dict | None = None):
     try:
         import requests
     except ImportError as exc:
@@ -347,7 +375,7 @@ def _http_get(url: str, *, stream: bool = False):
             "Artifact download requires requests. Install the SDK with its default dependencies."
         ) from exc
 
-    return requests.get(url, timeout=60, stream=stream)
+    return requests.get(url, timeout=60, stream=stream, headers=headers)
 
 
 def _safe_relative_path(path_value: str) -> Path:
@@ -390,12 +418,31 @@ def _extract_archive(archive_path: Path, dest_dir: Path) -> Path:
     import tarfile
     import zipfile
 
+    dest_dir_resolved = dest_dir.resolve()
+
     if tarfile.is_tarfile(archive_path):
         with tarfile.open(archive_path) as archive:
-            archive.extractall(dest_dir)
+            # Check for directory traversal members
+            safe_members = []
+            for member in archive.getmembers():
+                member_path = Path(member.name)
+                # Resolve the target path safely
+                target_path = dest_dir_resolved.joinpath(member_path).resolve()
+                if not target_path.is_relative_to(dest_dir_resolved):
+                    continue
+                safe_members.append(member)
+            archive.extractall(dest_dir_resolved, members=safe_members)  # nosec B202
     elif zipfile.is_zipfile(archive_path):
         with zipfile.ZipFile(archive_path) as archive:
-            archive.extractall(dest_dir)
+            # Check for directory traversal members
+            safe_members = []
+            for member in archive.namelist():
+                member_path = Path(member)
+                target_path = dest_dir_resolved.joinpath(member_path).resolve()
+                if not target_path.is_relative_to(dest_dir_resolved):
+                    continue
+                safe_members.append(member)
+            archive.extractall(dest_dir_resolved, members=safe_members)  # nosec B202
     else:
         raise ArtifactDownloadError(f"Unsupported bundle archive format: {archive_path}")
 
@@ -444,17 +491,36 @@ def download_runtime_artifacts(
             )
 
         total_files = len(files)
+        max_workers = runtime_settings.max_download_workers
         log.info(
-            "Downloading Barrikade artifacts for %s (%d files)",
+            "Downloading Barrikade artifacts for %s (%d files) using %d workers",
             layer_name,
             total_files,
+            max_workers,
         )
-        for index, (blob_name, local_path, relative_path) in enumerate(
-            _iter_download_targets(layer_name, files, runtime_settings),
-            start=1,
-        ):
-            label = f"{layer_name}/{relative_path.as_posix()} ({index}/{total_files})"
-            _download_gcs_file(resolved_bucket, blob_name, local_path, label=label)
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = []
+            for index, (blob_name, local_path, relative_path) in enumerate(
+                _iter_download_targets(layer_name, files, runtime_settings),
+                start=1,
+            ):
+                label = f"{layer_name}/{relative_path.as_posix()} ({index}/{total_files})"
+                futures.append(
+                    pool.submit(
+                        _download_gcs_file,
+                        resolved_bucket,
+                        blob_name,
+                        local_path,
+                        label=label,
+                    )
+                )
+            try:
+                for future in as_completed(futures):
+                    future.result()
+            except Exception:
+                for f in futures:
+                    f.cancel()
+                raise
 
         downloaded_layers.append(layer_name)
         log.info("Layer %s artifacts ready", layer_name)
@@ -549,27 +615,57 @@ def download_runtime_bundle(
         base_url = _manifest_base_url(remote_manifest, resolved_bucket)
         prefix = _manifest_prefix(remote_manifest)
         staging_dir = _create_staging_dir(target_dir)
+        max_workers = runtime_settings.max_download_workers
+
+        def download_and_verify(entry_info, idx):
+            path_value = entry_info.get("path") or entry_info.get("name")
+            if not path_value:
+                return
+            relative_path = _safe_relative_path(str(path_value))
+            if prefix:
+                remote_path = f"{prefix}/{relative_path.as_posix()}"
+            else:
+                remote_path = relative_path.as_posix()
+            
+            destination = staging_dir / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            
+            expected_sha = entry_info.get("sha256")
+            
+            # Fast-path: Check if existing file in target_dir is up-to-date and reuse it
+            existing_target_file = target_dir / relative_path
+            if existing_target_file.exists() and expected_sha:
+                try:
+                    actual_sha = _sha256_file(existing_target_file)
+                    if actual_sha.lower() == str(expected_sha).lower():
+                        log.info("Reusing up-to-date local file for %s", relative_path.as_posix())
+                        shutil.copy2(existing_target_file, destination)
+                        return
+                except Exception as e:
+                    log.debug("Failed to reuse existing file %s: %s", relative_path, e)
+            
+            url = entry_info.get("url") or f"{base_url}/{remote_path}"
+            label = f"bundle/{relative_path.as_posix()} ({idx}/{len(files)})"
+            _download_url_to_path(str(url), destination, label=label)
+            if expected_sha:
+                actual_sha = _sha256_file(destination)
+                if actual_sha.lower() != str(expected_sha).lower():
+                    raise ArtifactDownloadError(
+                        f"Checksum mismatch for {relative_path}"
+                    )
+
         try:
-            for index, entry in enumerate(files, start=1):
-                path_value = entry.get("path") or entry.get("name")
-                if not path_value:
-                    continue
-                relative_path = _safe_relative_path(str(path_value))
-                if prefix:
-                    remote_path = f"{prefix}/{relative_path.as_posix()}"
-                else:
-                    remote_path = relative_path.as_posix()
-                url = entry.get("url") or f"{base_url}/{remote_path}"
-                destination = staging_dir / relative_path
-                label = f"bundle/{relative_path.as_posix()} ({index}/{len(files)})"
-                _download_url_to_path(str(url), destination, label=label)
-                expected_sha = entry.get("sha256")
-                if expected_sha:
-                    actual_sha = _sha256_file(destination)
-                    if actual_sha.lower() != str(expected_sha).lower():
-                        raise ArtifactDownloadError(
-                            f"Checksum mismatch for {relative_path}"
-                        )
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = []
+                for index, entry in enumerate(files, start=1):
+                    futures.append(pool.submit(download_and_verify, entry, index))
+                try:
+                    for future in as_completed(futures):
+                        future.result()
+                except Exception:
+                    for f in futures:
+                        f.cancel()
+                    raise
 
             _swap_bundle_dir(staging_dir, target_dir)
         except Exception:

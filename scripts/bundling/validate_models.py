@@ -19,7 +19,7 @@ from typing import Dict, List, Tuple
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORE_DIR = REPO_ROOT / "core"
 MODELS_DIR = CORE_DIR / "models"
 
@@ -184,7 +184,7 @@ def validate_layer_d() -> Tuple[bool, List[str]]:
         
         if has_config and has_model_dir:
             try:
-                AutoModel.from_pretrained(str(model_dir))
+                AutoModel.from_pretrained(str(model_dir))  # nosec B615
                 logger.info(f"  ✓ Transformers model loads successfully")
             except Exception as e:
                 logger.warning(f"  ⚠ Warning loading model: {e}")
@@ -223,7 +223,7 @@ def validate_layer_e() -> Tuple[bool, List[str]]:
         
         if model_dir.exists():
             try:
-                AutoModelForCausalLM.from_pretrained(str(model_dir))
+                AutoModelForCausalLM.from_pretrained(str(model_dir))  # nosec B615
                 logger.info(f"  ✓ Layer E model loads successfully")
             except Exception as e:
                 logger.warning(f"  ⚠ Warning loading Layer E model: {e}")

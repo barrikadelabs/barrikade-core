@@ -47,7 +47,7 @@ download_models_from_gcs() {
     mkdir -p "$MODELS_DIR"
 
     cd /app
-    if python -m scripts.gcs_download \
+    if python -m scripts.bundling.gcs_download \
         --bucket "$bucket" \
         --no-archive-old \
         --validate \
@@ -64,7 +64,7 @@ download_models_from_gcs() {
 validate_models() {
     log_info "Validating local models..."
 
-    if cd /app && python -m scripts.validate_models --verbose; then
+    if cd /app && python -m scripts.bundling.validate_models --verbose; then
         log_info "Models validation successful"
         return 0
     fi

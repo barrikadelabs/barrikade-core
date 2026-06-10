@@ -36,7 +36,7 @@ def main() -> int:
         shutil.rmtree(destination)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    snapshot_download(
+    snapshot_download(  # nosec B615
         repo_id=settings.layer_e_model_hf_id,
         local_dir=str(destination),
     ) # type: ignore

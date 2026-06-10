@@ -193,12 +193,12 @@ def train_dual_encoder(mal_texts, safe_texts, settings):
 
     #Subsample for training speed
     if max_samples and len(mal_texts) > max_samples:
-        mal_sample = random.sample(list(mal_texts), max_samples)
+        mal_sample = random.sample(list(mal_texts), max_samples)  # nosec B311
     else:
         mal_sample = list(mal_texts)
 
     if max_samples and len(safe_texts) > max_samples:
-        safe_sample = random.sample(list(safe_texts), max_samples)
+        safe_sample = random.sample(list(safe_texts), max_samples)  # nosec B311
     else:
         safe_sample = list(safe_texts)
 
