@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import os
 import shutil
 from pathlib import Path
 import sys
@@ -41,8 +42,10 @@ def main() -> int:
     settings = Settings()
     if args.variant == "stream":
         # Resolved directly (not via the existence-checked settings property,
-        # which raises before anything has been downloaded).
-        destination = settings.layer_e_stream_model_candidates[0]
+        # which raises before anything has been downloaded), honouring the
+        # same env override the runtime reads.
+        override = os.getenv("BARRIKADA_LAYER_E_STREAM_MODEL_DIR")
+        destination = Path(override) if override else settings.layer_e_stream_model_candidates[0]
         hf_id = settings.layer_e_stream_model_hf_id
     else:
         destination = Path(settings.layer_e_model_dir)
