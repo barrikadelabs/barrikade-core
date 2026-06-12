@@ -216,6 +216,7 @@ class PIPipeline:
         """
         judge = self._get_stream_judge()
         start_time = time.time()
+        output_hash = hashlib.sha256(output_text.encode()).hexdigest()[:16]
         out = judge.verify_output(output_text, prompt_text=prompt_text)
         processing_time_ms = (time.time() - start_time) * 1000
 
@@ -238,6 +239,7 @@ class PIPipeline:
             trace_id=trace_id,
             span_id=span_id,
             payload={
+                "output_hash": output_hash,
                 "verdict": res.verdict,
                 "risk_level": res.risk_level,
                 "category": res.category,

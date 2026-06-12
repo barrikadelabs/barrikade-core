@@ -54,6 +54,12 @@ def test_verify_output_lazily_builds_judge_once(monkeypatch, tmp_path):
     assert first.to_dict()["token_risk_levels"] == ["Safe", "Safe", "Unsafe", "Unsafe"]
     assert first.get_risk_score() == 100.0
 
+    # Settings actually reach the judge constructor.
+    judge_kwargs = pipeline._stream_judge.kwargs
+    assert judge_kwargs["block_controversial"] is False
+    assert judge_kwargs["debounce_tokens"] == 2
+    assert judge_kwargs["max_seq_tokens"] == 8192
+
 
 def test_verify_output_missing_artifacts_fail_loudly(monkeypatch):
     monkeypatch.delenv("BARRIKADA_LAYER_E_STREAM_MODEL_DIR", raising=False)
