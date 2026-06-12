@@ -68,6 +68,12 @@ python scripts/download_qwen3guard.py
 python scripts/download_qwen3guard.py --variant stream
 ```
 
+Notes on the stream judge: the first `/v1/verify-output` request pays the
+model load (a few seconds, ~3 GB RSS at fp32 on CPU; `processing_time_ms`
+excludes it), and verification covers at most the first 8192 tokens of an
+output (the model's position limit) — responses beyond that return
+`truncated: true` with only the scanned span verified.
+
 **Initialize models directory** (one-time):
 
 ```bash
