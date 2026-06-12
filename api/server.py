@@ -39,6 +39,22 @@ class DetectResponse(BaseModel):
     result: dict[str, Any] | None = None
 
 
+class VerifyOutputRequest(BaseModel):
+    output: str = Field(..., min_length=1, max_length=50000)
+    prompt: str = Field(default="", max_length=50000)
+    include_diagnostics: bool = False
+
+
+class VerifyOutputResponse(BaseModel):
+    verdict: str
+    risk_level: str
+    category: str | None = None
+    rationale: str
+    truncated: bool
+    processing_time_ms: float
+    result: dict[str, Any] | None = None
+
+
 class HealthResponse(BaseModel):
     status: str
 
@@ -195,6 +211,42 @@ def detect(payload: DetectRequest):
         decision_layer=result.decision_layer.value,
         confidence_score=result.confidence_score,
         total_processing_time_ms=result.total_processing_time_ms,
+        result=details,
+    )
+
+
+# Stateless output-verification endpoint
+
+
+@app.post("/v1/verify-output", response_model=VerifyOutputResponse)
+def verify_output(payload: VerifyOutputRequest):
+    """Verify an LLM output with the Qwen3Guard-Stream judge.
+
+    The judge loads lazily on first call; a 503 with the searched paths means
+    the stream model artifacts have not been downloaded.
+    """
+    if state.pipeline is None:
+        raise HTTPException(
+            status_code=503,
+            detail=state.startup_error or "Pipeline unavailable",
+        )
+
+    try:
+        result = state.pipeline.verify_output(payload.output, prompt_text=payload.prompt)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover
+        log.exception("Output verification request failed")
+        raise HTTPException(status_code=500, detail=f"Output verification failed: {exc}") from exc
+
+    details = result.to_dict() if payload.include_diagnostics else None
+    return VerifyOutputResponse(
+        verdict=result.verdict,
+        risk_level=result.risk_level,
+        category=result.category,
+        rationale=result.rationale,
+        truncated=result.truncated,
+        processing_time_ms=result.processing_time_ms,
         result=details,
     )
 
