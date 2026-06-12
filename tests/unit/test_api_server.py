@@ -22,8 +22,7 @@ class _FakePipeline:
         )
 
     def verify_output(self, output, prompt_text=""):
-        assert isinstance(output, str)
-        assert isinstance(prompt_text, str)
+        self.verify_output_args = (output, prompt_text)
         return SimpleNamespace(
             verdict="block",
             risk_level="Unsafe",
@@ -125,6 +124,20 @@ def test_verify_output_with_diagnostics():
     payload = resp.json()
     assert payload["result"]["token_risk_levels"] == ["Safe", "Unsafe", "Unsafe"]
     assert payload["result"]["flagged_token_index"] == 2
+    # output and prompt must not be swapped on the way into the pipeline
+    assert state.pipeline.verify_output_args == ("some llm response", "a prompt")
+
+
+def test_verify_output_request_validation():
+    state.pipeline = _FakePipeline()  # type: ignore
+    state.startup_error = None
+
+    client = TestClient(app)
+    assert client.post("/v1/verify-output", json={"prompt": "no output field"}).status_code == 422
+    assert client.post("/v1/verify-output", json={"output": ""}).status_code == 422
+    assert (
+        client.post("/v1/verify-output", json={"output": "x" * 50001}).status_code == 422
+    )
 
 
 def test_verify_output_missing_artifacts_returns_503():

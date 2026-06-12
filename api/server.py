@@ -233,7 +233,9 @@ def verify_output(payload: VerifyOutputRequest):
 
     try:
         result = state.pipeline.verify_output(payload.output, prompt_text=payload.prompt)
-    except FileNotFoundError as exc:
+    except OSError as exc:
+        # FileNotFoundError (artifacts not downloaded) and other OSErrors from
+        # loading a corrupt model dir are availability problems, not 500s.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
         log.exception("Output verification request failed")
