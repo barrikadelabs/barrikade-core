@@ -28,6 +28,7 @@ core/models/
 │   └── archives/
 └── layer_e/
     ├── qwen3guard-barrikade/ (Qwen3Guard-Gen-0.6B bundle)
+    ├── qwen3guard-stream-barrikade/ (Qwen3Guard-Stream-0.6B bundle, output verification)
     └── archives/
 ```
 
@@ -58,6 +59,13 @@ pip install -r requirements.txt
 
 ```bash
 python scripts/download_qwen3guard.py
+```
+
+**Download the output-verification (stream) judge** (optional — only needed for
+`/v1/verify-output`; it loads lazily, so the detection pipeline runs without it):
+
+```bash
+python scripts/download_qwen3guard.py --variant stream
 ```
 
 **Initialize models directory** (one-time):
