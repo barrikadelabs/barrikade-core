@@ -1,8 +1,9 @@
 """
-Download the smallest Qwen3Guard model bundle into core/models/layer_e/.
+Download a Qwen3Guard model bundle into core/models/layer_e/.
 
 Usage:
-    python scripts/download_qwen3guard.py
+    python scripts/download_qwen3guard.py                    # Gen judge (Layer E)
+    python scripts/download_qwen3guard.py --variant stream   # Stream output-verification judge
     python scripts/download_qwen3guard.py --force
 """
 
@@ -21,12 +22,31 @@ from core.settings import Settings
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Download Qwen3Guard-Gen-0.6B into the Layer E model bundle directory")
-    parser.add_argument("--force", action="store_true", help="Replace the existing local bundle if it already exists")
+    parser = argparse.ArgumentParser(
+        description="Download a Qwen3Guard bundle into the Layer E model directory"
+    )
+    parser.add_argument(
+        "--variant",
+        choices=("gen", "stream"),
+        default="gen",
+        help="gen = Layer E judge (default); stream = output-verification judge",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace the existing local bundle if it already exists",
+    )
     args = parser.parse_args()
 
     settings = Settings()
-    destination = Path(settings.layer_e_model_dir)
+    if args.variant == "stream":
+        # Resolved directly (not via the existence-checked settings property,
+        # which raises before anything has been downloaded).
+        destination = settings.layer_e_stream_model_candidates[0]
+        hf_id = settings.layer_e_stream_model_hf_id
+    else:
+        destination = Path(settings.layer_e_model_dir)
+        hf_id = settings.layer_e_model_hf_id
 
     if destination.exists() and any(destination.iterdir()):
         if not args.force:
@@ -37,10 +57,10 @@ def main() -> int:
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     snapshot_download(
-        repo_id=settings.layer_e_model_hf_id,
+        repo_id=hf_id,
         local_dir=str(destination),
-    ) # type: ignore
-    print(f"Downloaded {settings.layer_e_model_hf_id} to {destination}")
+    )  # type: ignore
+    print(f"Downloaded {hf_id} to {destination}")
     return 0
 
 
