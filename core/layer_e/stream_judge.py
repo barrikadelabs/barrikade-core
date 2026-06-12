@@ -92,10 +92,14 @@ class Qwen3GuardStreamJudge:
         im_end = tokenizer.convert_tokens_to_ids("<|im_end|>")
         user_token = tokenizer.convert_tokens_to_ids("user")
         try:
-            last_start = next(
-                i for i in range(len(ids) - 1, -1, -1) if ids[i : i + 2] == [im_start, user_token]
+            # First user span, searched forward: ChatML markers embedded in the
+            # (attacker-controlled) prompt or output can then only move the
+            # boundary earlier — scanning more tokens — never later, which
+            # would let an output hide content from verification.
+            user_start = next(
+                i for i in range(len(ids) - 1) if ids[i : i + 2] == [im_start, user_token]
             )
-            user_end = next(i for i in range(last_start + 2, len(ids)) if ids[i] == im_end)
+            user_end = next(i for i in range(user_start + 2, len(ids)) if ids[i] == im_end)
         except StopIteration:
             raise ValueError(
                 "Could not locate the user span in the rendered chat template; "
@@ -114,6 +118,8 @@ class Qwen3GuardStreamJudge:
         return result
 
     def verify_output(self, output_text, prompt_text=""):
+        """Score an output; `flagged_token_index` indexes the scored response
+        span, which includes the chat template's assistant framing tokens."""
         token_ids, response_start = self._render(prompt_text, output_text)
         truncated = False
         if len(token_ids) > self.max_seq_tokens:
@@ -124,9 +130,55 @@ class Qwen3GuardStreamJudge:
                 token_ids = token_ids[: self.max_seq_tokens]
             truncated = True
 
+        # Everything from scoring through verdict construction fails closed:
+        # a malformed result must block, not surface as a server error.
         try:
             result = self._score_tokens(token_ids)
-        except (ValueError, RuntimeError, TypeError, torch.cuda.OutOfMemoryError) as exc:
+            token_risk_levels = list(result["risk_level"][response_start:])
+            token_categories = list(result["category"][response_start:])
+
+            blocking = {"Unsafe", "Controversial"} if self.block_controversial else {"Unsafe"}
+            flagged_index = first_flagged_index(token_risk_levels, blocking, self.debounce_tokens)
+            observed = worst_risk_level(token_risk_levels)
+
+            if flagged_index is not None:
+                decision = "block"
+                category = token_categories[flagged_index]
+                rationale = (
+                    f"Qwen3Guard-Stream flagged the output as "
+                    f"{token_risk_levels[flagged_index].lower()} ({category}) "
+                    f"from response token {flagged_index}"
+                )
+            else:
+                decision = "allow"
+                category = None
+                if observed == "Safe":
+                    rationale = "Qwen3Guard-Stream classified the output as safe"
+                else:
+                    rationale = (
+                        f"Qwen3Guard-Stream observed {observed.lower()} tokens "
+                        f"below the blocking policy; output allowed"
+                    )
+
+            return StreamJudgeOutput(
+                decision=decision,
+                risk_level=observed,
+                category=category,
+                rationale=rationale,
+                model=self.model_name,
+                flagged_token_index=flagged_index,
+                truncated=truncated,
+                token_risk_levels=token_risk_levels,
+                token_categories=token_categories,
+            )
+        except (
+            ValueError,
+            RuntimeError,
+            TypeError,
+            KeyError,
+            IndexError,
+            torch.cuda.OutOfMemoryError,
+        ) as exc:
             log.exception("Qwen3Guard-Stream scoring failed; failing closed")
             return StreamJudgeOutput(
                 decision="block",
@@ -139,41 +191,3 @@ class Qwen3GuardStreamJudge:
                 token_risk_levels=[],
                 token_categories=[],
             )
-
-        token_risk_levels = list(result["risk_level"][response_start:])
-        token_categories = list(result["category"][response_start:])
-
-        blocking = {"Unsafe", "Controversial"} if self.block_controversial else {"Unsafe"}
-        flagged_index = first_flagged_index(token_risk_levels, blocking, self.debounce_tokens)
-        observed = worst_risk_level(token_risk_levels)
-
-        if flagged_index is not None:
-            decision = "block"
-            category = token_categories[flagged_index]
-            rationale = (
-                f"Qwen3Guard-Stream flagged the output as "
-                f"{token_risk_levels[flagged_index].lower()} ({category}) "
-                f"from response token {flagged_index}"
-            )
-        else:
-            decision = "allow"
-            category = None
-            if observed == "Safe":
-                rationale = "Qwen3Guard-Stream classified the output as safe"
-            else:
-                rationale = (
-                    f"Qwen3Guard-Stream observed {observed.lower()} tokens "
-                    f"below the blocking policy; output allowed"
-                )
-
-        return StreamJudgeOutput(
-            decision=decision,
-            risk_level=observed,
-            category=category,
-            rationale=rationale,
-            model=self.model_name,
-            flagged_token_index=flagged_index,
-            truncated=truncated,
-            token_risk_levels=token_risk_levels,
-            token_categories=token_categories,
-        )
