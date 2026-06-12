@@ -404,10 +404,6 @@ class Settings(BaseModel):
         )
 
     @property
-    def layer_e_stream_model_dirname(self) -> str:
-        return str(Path(self.artifacts_root_dir) / "layer_e" / "qwen3guard-stream-barrikade")
-
-    @property
     def layer_e_stream_model_candidates(self) -> list[Path]:
         return [
             Path(self.core_models_dir) / "layer_e" / "qwen3guard-stream-barrikade",
