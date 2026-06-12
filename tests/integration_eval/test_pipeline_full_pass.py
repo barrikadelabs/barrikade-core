@@ -51,10 +51,10 @@ def run_full_pipeline_pass():
     summary_path = result_dir / f"pipeline_full_pass_summary_{ts}.json"
     results_df.to_csv(csv_path, index=False)
 
-    correct = (
+    correct = int((
         ((results_df["true_label"] == 0) & (results_df["final_verdict"] == "allow"))
         | ((results_df["true_label"] == 1) & (results_df["final_verdict"].isin(["block", "flag"])))
-    ).sum()
+    ).sum())
     summary = {
         "total_samples": len(results_df),
         "correct_predictions": correct,

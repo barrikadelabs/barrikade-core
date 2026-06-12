@@ -20,8 +20,11 @@ def test_public_sdk_exports_pipeline():
 
 
 def test_ensure_runtime_artifacts_errors_when_auto_download_disabled(monkeypatch, tmp_path):
+    import core.artifacts
+    monkeypatch.setattr(core.artifacts, "_BUNDLE_CHECKED", False)
     monkeypatch.setenv("BARRIKADA_ARTIFACTS_DIR", str(tmp_path / "artifacts"))
     monkeypatch.setenv("BARRIKADA_CORE_MODELS_DIR", str(tmp_path / "core-models"))
+    monkeypatch.setenv("BARRIKADA_BUNDLE_DIR", str(tmp_path / "bundle"))
 
     with pytest.raises(ArtifactDownloadError, match="download-artifacts"):
         ensure_runtime_artifacts(auto_download=False)

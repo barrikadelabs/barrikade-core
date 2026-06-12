@@ -5,7 +5,7 @@ from core.layer_e.local_judge import Qwen3GuardJudge
 
 class _FakeTokenizer:
     pad_token = None
-    eos_token = "</s>"
+    eos_token = "</s>"  # nosec B105
     eos_token_id = 2
     pad_token_id = 2
 
