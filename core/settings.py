@@ -334,6 +334,15 @@ class Settings(BaseModel):
     layer_e_max_new_tokens: int = 64
     layer_e_no_think_default: bool = True
 
+    ### Layer E stream judge (Qwen3Guard-Stream output verification)
+    layer_e_stream_model_hf_id: str = "Qwen/Qwen3Guard-Stream-0.6B"
+    # Blocking policy: "Unsafe" always blocks; "Controversial" only when enabled.
+    layer_e_stream_block_controversial: bool = False
+    # Consecutive non-safe tokens required to flag (2 = the tech-report rule).
+    layer_e_stream_debounce_tokens: int = 2
+    # Hard cap from the model's max_position_embeddings.
+    layer_e_stream_max_seq_tokens: int = 8192
+
     # Teacher SFT defaults (QLoRA)
     layer_e_teacher_hf_model_id: str = "Qwen/Qwen3-4B"
     layer_e_teacher_epochs: int = 3
@@ -384,4 +393,24 @@ class Settings(BaseModel):
             Path(self.core_models_dir) / "layer_e" / "qwen3guard-barrikade",
             Path(self.bundle_root_dir) / "layer_e" / "qwen3guard-barrikade",
             Path(self.artifacts_root_dir) / "layer_e" / "qwen3guard-barrikade",
+        ]
+
+    @property
+    def layer_e_stream_model_dir(self):
+        return self._existing_path_with_override(
+            "BARRIKADA_LAYER_E_STREAM_MODEL_DIR",
+            self.layer_e_stream_model_candidates,
+            "Layer E stream model directory",
+        )
+
+    @property
+    def layer_e_stream_model_dirname(self) -> str:
+        return str(Path(self.artifacts_root_dir) / "layer_e" / "qwen3guard-stream-barrikade")
+
+    @property
+    def layer_e_stream_model_candidates(self) -> list[Path]:
+        return [
+            Path(self.core_models_dir) / "layer_e" / "qwen3guard-stream-barrikade",
+            Path(self.bundle_root_dir) / "layer_e" / "qwen3guard-stream-barrikade",
+            Path(self.artifacts_root_dir) / "layer_e" / "qwen3guard-stream-barrikade",
         ]

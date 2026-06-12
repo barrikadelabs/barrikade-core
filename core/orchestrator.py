@@ -1,11 +1,13 @@
 import hashlib
 import logging
+import threading
 import time
 
 from core.artifacts import ensure_runtime_artifacts
 from core.settings import Settings
 from models.PipelineResult import PipelineResult
 from models.LayerEResult import LayerEResult
+from models.OutputVerificationResult import OutputVerificationResult
 from core.telemetry import telemetry
 
 from models.verdicts import DecisionLayer, FinalVerdict
@@ -50,6 +52,14 @@ class PIPipeline:
             max_new_tokens=settings.layer_e_max_new_tokens,
             no_think_default=settings.layer_e_no_think_default,
         )
+
+        # The Qwen3Guard-Stream output-verification judge is constructed
+        # lazily on first use, unlike the detection layers: it adds ~3 GB RSS
+        # and its artifacts are optional — eager construction would fail
+        # /health/ready on every deployment that has not pulled the stream
+        # bundle, taking /v1/detect down with it.
+        self._stream_judge = None
+        self._stream_judge_lock = threading.Lock()
         log.info("Barrikade pipeline ready")
 
     def _create_result(
@@ -175,6 +185,71 @@ class PIPipeline:
             payload=payload,
             metrics=metrics,
         )
+
+    def _get_stream_judge(self):
+        if self._stream_judge is None:
+            with self._stream_judge_lock:
+                if self._stream_judge is None:
+                    # Heavy import deferred like the layer imports in __init__.
+                    from core.layer_e.stream_judge import Qwen3GuardStreamJudge
+
+                    settings = Settings()
+                    model_dir = settings.layer_e_stream_model_dir
+                    log.info("Loading Qwen3Guard-Stream judge from %s", model_dir)
+                    self._stream_judge = Qwen3GuardStreamJudge(
+                        model_dir=model_dir,
+                        model_name=model_dir,
+                        block_controversial=settings.layer_e_stream_block_controversial,
+                        debounce_tokens=settings.layer_e_stream_debounce_tokens,
+                        max_seq_tokens=settings.layer_e_stream_max_seq_tokens,
+                    )
+        return self._stream_judge
+
+    def verify_output(
+        self, output_text, prompt_text="", workload_id=None, trace_id=None, span_id=None
+    ):
+        """Verify an LLM output with the Qwen3Guard-Stream judge.
+
+        Separate from detect(): layers A-D are input-attack-tuned and do not
+        apply to assistant responses. Raises FileNotFoundError when the
+        stream model artifacts are missing (the loud-failure convention).
+        """
+        judge = self._get_stream_judge()
+        start_time = time.time()
+        out = judge.verify_output(output_text, prompt_text=prompt_text)
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        res = OutputVerificationResult(
+            verdict=out.decision,
+            risk_level=out.risk_level,
+            category=out.category,
+            rationale=out.rationale,
+            model=out.model,
+            flagged_token_index=out.flagged_token_index,
+            truncated=out.truncated,
+            processing_time_ms=processing_time_ms,
+            token_risk_levels=out.token_risk_levels,
+            token_categories=out.token_categories,
+        )
+        telemetry.emit_sampled(
+            is_anomalous=res.verdict == "block",
+            event_type="output_verification",
+            workload_id=workload_id,
+            trace_id=trace_id,
+            span_id=span_id,
+            payload={
+                "verdict": res.verdict,
+                "risk_level": res.risk_level,
+                "category": res.category,
+                "model": res.model,
+                "truncated": res.truncated,
+            },
+            metrics={
+                "processing_time_ms": res.processing_time_ms,
+                "risk_score": res.get_risk_score(),
+            },
+        )
+        return res
 
     def detect(self, input_text, workload_id=None, trace_id=None, span_id=None):
         telemetry.record_pipeline_start()
