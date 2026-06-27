@@ -94,3 +94,6 @@ explicit-preview-rules = true
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv"]
