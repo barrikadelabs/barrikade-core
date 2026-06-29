@@ -13,10 +13,10 @@ authors = [{ name = "Barrikade" }]
 dependencies = [
   "mcp>=1.27.1",
   # Detection core. NOTE the distribution name is "barrikade" (no second 'a'),
-  # which is distinct from this package, "barrikade-mcp". The core is not yet on
-  # PyPI — see README "Install" for the interim editable/git install. Do NOT
-  # inline a `barrikade @ git+https://...` URL here: PyPI rejects direct-URL
-  # dependencies in uploaded distribution metadata, which would block publishing.
+  # which is distinct from this package, "barrikade-mcp". The core is published
+  # on PyPI, so this pin resolves on a normal install. Do NOT inline a
+  # `barrikade @ git+https://...` URL here: PyPI rejects direct-URL dependencies
+  # in uploaded distribution metadata, which would block publishing.
   "barrikade>=0.2.0",
 ]
 keywords = [
