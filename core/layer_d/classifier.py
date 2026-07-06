@@ -1,3 +1,4 @@
+import core.onnx_patch
 import logging
 import time
 import json

@@ -1,3 +1,4 @@
+import core.onnx_patch
 import time
 import hashlib
 import json

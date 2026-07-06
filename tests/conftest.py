@@ -1,3 +1,4 @@
+import core.onnx_patch
 import os
 
 os.environ.setdefault("BARRIKADA_SKIP_IMPORT_BUNDLE_CHECK", "1")
