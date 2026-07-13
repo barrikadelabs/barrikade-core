@@ -30,7 +30,7 @@ idna==3.18
 joblib==1.5.2
 ml_dtypes==0.5.4
 numpy==2.3.4
-onnx==1.21.0
+onnx==1.22.0
 onnxruntime==1.26.0
 packaging==25.0
 pydantic==2.12.3

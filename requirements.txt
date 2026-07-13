@@ -70,7 +70,7 @@ multiprocess==0.70.18
 nest-asyncio==1.6.0
 networkx==3.6.1
 numpy==2.3.4
-onnx==1.21.0
+onnx==1.22.0
 onnxmltools==1.16.0
 onnxruntime==1.26.0
 openai==2.21.0
