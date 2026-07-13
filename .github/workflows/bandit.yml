@@ -9,7 +9,7 @@ on:
     - cron: '0 0 * * 1' # Run weekly on Mondays
 
 jobs:
-  bandit-scan:
+  bandit:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
