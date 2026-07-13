@@ -1,0 +1,39 @@
+name: Bandit Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 1' # Run weekly on Mondays
+
+jobs:
+  bandit-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit and Formatter
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install bandit bandit-sarif-formatter
+
+      - name: Run Bandit
+        # Generates a SARIF report using the configuration in pyproject.toml
+        run: bandit -c pyproject.toml -r . --format sarif --output results.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
