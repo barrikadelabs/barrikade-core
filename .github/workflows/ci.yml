@@ -43,8 +43,10 @@ jobs:
         # The optimum.onnxruntime import is the canary that would have caught
         # the missing-optimum-onnx-dep regression from a previous PR. Add
         # to this list when a new dep enters the runtime hot path.
+        env:
+          PYTHONPATH: "."
         run: |
-          python -c "from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTModelForSequenceClassification"
+          python -c "import core.onnx_patch; from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTModelForSequenceClassification"
           python -c "from sentence_transformers import SentenceTransformer"
           python -c "import onnxruntime"
           python -c "import torch"
