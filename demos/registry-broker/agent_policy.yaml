@@ -1,0 +1,30 @@
+
+# Left side: what each AGENT is permitted (my old POLICY dict, now data)
+agents:
+  notion-bugfinder:
+    owner: richard@barrikade.ai       # links agent -> human
+    allowed:
+      - { resource: github, scope: "repo:read" }
+      - { resource: notion, scope: "pages:read" }
+  
+  github-bugfinder:
+    owner: derek@barrikade.ai       # links agent -> human
+    allowed:
+      - { resource: github, scope: "repo:read" }
+      - { resource: github, scope: "repo:write" }
+    
+
+
+# Right side: what each HUMAN is permitted (the other half of the intersection)
+humans:
+  richard@barrikade.ai:
+    allowed:
+      - { resource: github, scope: "repo:read" }
+      - { resource: github, scope: "repo:write" } # human has MORE than the agent (human has write) - on purpose
+      - { resource: notion, scope: "pages:read" }
+
+  derek@barrikade.ai:
+    allowed:
+      - { resource: github, scope: "repo:read" }
+
+
