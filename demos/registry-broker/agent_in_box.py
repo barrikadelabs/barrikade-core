@@ -3,7 +3,7 @@
 import asyncio
 import broker_demo
 
-SECRET_PATH = "/workspace/../demo-secret.env"   # the host secret - NOT in the box
+SECRET_PATH = "/workspace/../demo-secret.env"  # nosec B105 — a demo file path, not a credential; the host secret lives OUTSIDE the box
 
 async def main():
     # Route 1 - the direct grab: just read the secret off disk
