@@ -1,6 +1,7 @@
 
-# Left side: what each AGENT is permitted (my old POLICY dict, now data)
-agents:
+# Left side: what each AGENT is permitted (my old POLICY dict, now data)#
+version: 1
+agents: 
   notion-bugfinder:
     owner: richard@barrikade.ai       # links agent -> human
     allowed:

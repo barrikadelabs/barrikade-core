@@ -1,4 +1,3 @@
-
 # agent_in_box.py — simulates an agent trapped inside the sandbox
 import asyncio
 import broker_demo
@@ -14,13 +13,10 @@ async def main():
         # Blocked by the sandbox - fall through to the sanctioned route
         print("[agent] direct read BLOCKED - secret isn't in the box")
 
-
         # Route 2 — the escape hatch: ask the broker
         result = await broker_credentials_call()  # fill this in
         print("[agent] broker says granted =", result.granted)
         print("[agent] scoped token =", result.token)
-
-
 
 
 async def broker_credentials_call():
