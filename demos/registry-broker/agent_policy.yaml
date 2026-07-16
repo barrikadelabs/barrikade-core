@@ -7,11 +7,11 @@ agents:
       - { resource: github, scope: "repo:read" }
       - { resource: notion, scope: "pages:read" }
   
-  github-bugfinder:
-    owner: derek@barrikade.ai       # links agent -> human
+
+  deploy-bot:
+    owner: readonly-owner@barrikade.ai       #  deliberately exceeds its owner, just testing for now, dont remove
     allowed:
-      - { resource: github, scope: "repo:read" }
-      - { resource: github, scope: "repo:write" }
+      - { resource: github, scope: "repo:write" }  
     
 
 
@@ -23,7 +23,8 @@ humans:
       - { resource: github, scope: "repo:write" } # human has MORE than the agent (human has write) - on purpose
       - { resource: notion, scope: "pages:read" }
 
-  derek@barrikade.ai:
+
+  readonly-owner@barrikade.ai:
     allowed:
       - { resource: github, scope: "repo:read" }
 
