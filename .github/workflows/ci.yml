@@ -89,6 +89,17 @@ jobs:
         run: |
           pytest -q tests/unit/ tests/telemetry/
 
+      - name: Run barrikade-mcp server tests
+        # The MCP server (barrikade-mcp/) is a separate sub-distribution whose
+        # tests aren't covered by the suites above (root testpaths = ["tests"]).
+        # They mock the pipeline, so no model artifacts are needed, but they do
+        # need `mcp`.
+        env:
+          PYTHONPATH: "."
+        run: |
+          python -m pip install "mcp>=1.27.1"
+          pytest -q barrikade-mcp
+
   docker-build:
     name: Production Docker image build
     runs-on: ubuntu-latest
@@ -102,4 +113,4 @@ jobs:
         # subtly between the host runner and the container build, so a
         # successful host install in install-runtime is necessary but not
         # sufficient.
-        run: docker build --target production -t barrikada/api:ci .
+        run: docker build --target production -t barrikade/api:ci .
