@@ -4,6 +4,9 @@ services:
     command: python broker_http.py
     volumes:
       - ./agent_policy.yaml:/app/agent_policy.yaml:ro   # ONLY the broker gets the policy (read-only)
+    environment:                          # <-- add this block
+      OPENBAO_ADDR: http://openbao:8200
+      OPENBAO_TOKEN: root
     networks:
       - sealed
 
@@ -19,6 +22,14 @@ services:
     networks:
       - sealed
     # no volumes → no policy, no audit, no secret.
+
+  openbao:
+    image: openbao/openbao
+    command: server -dev
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: root
+    cap_add: [IPC_LOCK]
+    networks: [sealed]
 
 networks:
   sealed:
