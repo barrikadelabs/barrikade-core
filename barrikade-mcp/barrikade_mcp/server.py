@@ -36,7 +36,7 @@ _MAX_TEXT_CHARS = 50_000
 
 _ARTIFACTS_MISSING_MSG = (
     "Barrikade model artifacts are unavailable. Download them once with "
-    "`barrikade download-artifacts` (or `python scripts/gcs_download.py "
+    "`barrikade download-artifacts` (or `python scripts/bundling/gcs_download.py "
     "--bucket barrikade-bundles` from a repo checkout), or point the BARRIKADA_* "
     "path env vars at an existing bundle."
 )
