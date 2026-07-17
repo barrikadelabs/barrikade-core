@@ -1,0 +1,25 @@
+services:
+  broker:
+    image: registry-broker:demo
+    command: python broker_http.py
+    volumes:
+      - ./agent_policy.yaml:/app/agent_policy.yaml:ro   # ONLY the broker gets the policy (read-only)
+    networks:
+      - sealed
+
+  agent:
+    image: registry-broker:demo
+    command: python agent_in_box.py
+    read_only: true            # the agent's whole filesystem is read-only
+    tmpfs:
+      - /tmp                   # except a scratch /tmp it needs at runtime
+    environment:
+      BROKER_URL: http://broker:8000/mcp
+      PYTHONDONTWRITEBYTECODE: "1"   # don't try to write .pyc files
+    networks:
+      - sealed
+    # no volumes → no policy, no audit, no secret.
+
+networks:
+  sealed:
+    internal: true     # THE EGRESS CUT: this network has no route to the internet

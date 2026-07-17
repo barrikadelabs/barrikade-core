@@ -5,6 +5,7 @@ import yaml
 
 VALID_ACTIONS = {"read", "write"}
 
+
 # open, parse, return
 def load_policy(path=Path(__file__).parent / "agent_policy.yaml"):
     with open(path) as f:
@@ -82,7 +83,9 @@ def is_allowed(policy, agent, resource, action):
 if __name__ == "__main__":
     p = load_policy()
     print(is_allowed(p, "notion-bugfinder", "github", "read"))  # -> repo:read
-    print(is_allowed(p, "notion-bugfinder", "github", "write"))  # -> None (human has write, agent doesn't...)
+    print(
+        is_allowed(p, "notion-bugfinder", "github", "write")
+    )  # -> None (human has write, agent doesn't...)
     print(is_allowed(p, "notion-bugfinder", "stripe", "read"))  # -> None
-    
+
     print(is_allowed(p, "deploy-bot", "github", "write"))  #

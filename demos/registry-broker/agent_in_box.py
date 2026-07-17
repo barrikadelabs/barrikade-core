@@ -4,18 +4,19 @@ a "Client" and the initialize() call is the "lifecycle handshake"
 
 # agent_in_box.py — simulates an agent trapped inside the sandbox
 import asyncio
+import os
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 
-BROKER_URL = "http://127.0.0.1:8000/mcp"  # the ONLY way the agent reaches the broker
+BROKER_URL = os.environ.get("BROKER_URL", "http://127.0.0.1:8000/mcp")
 
 
 async def broker_credentials_call():
     async with streamable_http_client(BROKER_URL) as (read, write, _):  # open the wire
         async with ClientSession(read, write) as session:  # a session on it
-            await session.initialize()  # the "hello" 
+            await session.initialize()  # the "hello"
 
             result = await session.call_tool(
                 "request_credentials",
@@ -42,7 +43,7 @@ async def main():
         print("[agent] direct read BLOCKED - secret isn't in the box")
 
         # Route 2 — the escape hatch: ask the broker
-        result = await broker_credentials_call() 
+        result = await broker_credentials_call()
         print("[agent] broker says granted =", result["granted"])
         print("[agent] scoped token =", result.get("token"))
 
