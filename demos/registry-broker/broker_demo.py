@@ -1,7 +1,11 @@
+"""
+a "Server" exposing a "Tool" over the "stdio" transport
+"""
+
 import logging
 import time
 import uuid
-from datetime import datetime, timezone  # Import datetime, timezone#
+from datetime import datetime, timezone  # Import datetime, timezone
 from pathlib import Path
 
 from broker_policy import is_allowed, load_policy
@@ -60,8 +64,8 @@ async def request_credentials(
 
     if scope:
         expires_at = (
-            datetime.now(timezone.utc).timestamp() + 600
-        )  # TTL - time right now + 600s (10mins)
+            datetime.now(timezone.utc).timestamp() + 600  # TTL - time right now + 600s (10mins)
+        )  
         token = f"scoped-token::{resource}::{scope}::exp={expires_at}"
         audit.info(
             "GRANT trace=%s policy_v=%s agent=%s resource=%s action=%s scope=%s stated_reason=%r",
