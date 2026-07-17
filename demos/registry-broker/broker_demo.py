@@ -5,12 +5,12 @@ a "Server" exposing a "Tool" over the "stdio" transport
 import logging
 import time
 import uuid
-from datetime import datetime, timezone  # Import datetime, timezone
 from pathlib import Path
 
 from broker_policy import is_allowed, load_policy
 from mcp.server.fastmcp import FastMCP  # Import FastMCP
 from pydantic import BaseModel, Field
+from secret_backend import OpenBaoBackend
 
 
 # --- audit logger setup ---
@@ -50,6 +50,7 @@ class CredentialResult(BaseModel):
 
 AGENT_ID = "notion-bugfinder"  # The agent this broker serves (NOT a tool arg) . Hardcoded
 POLICY = load_policy()
+BACKEND = OpenBaoBackend()
 
 
 @mcp.tool()
@@ -63,22 +64,20 @@ async def request_credentials(
     scope, decision_reason = is_allowed(POLICY, AGENT_ID, resource, action)
 
     if scope:
-        expires_at = (
-            datetime.now(timezone.utc).timestamp() + 600  # TTL - time right now + 600s (10mins)
-        )
-        token = f"scoped-token::{resource}::{scope}::exp={expires_at}"
+        st = BACKEND.mint(scope, 600)          # real store-issued token, 10-min TTL
         audit.info(
-            "GRANT trace=%s policy_v=%s agent=%s resource=%s action=%s scope=%s stated_reason=%r",
+            "GRANT trace=%s policy_v=%s agent=%s resource=%s action=%s scope=%s lease=%s stated_reason=%r",
             trace,
             POLICY.get("version"),
             AGENT_ID,
             resource,
             action,
             scope,
+            st.lease_id,
             reason or "<none>",
         )  # requested action AND granted scope
 
-        return CredentialResult(granted=True, scope=scope, expires_at=expires_at, token=token)
+        return CredentialResult(granted=True, scope=scope, expires_at=st.expires_at, token=st.credential)
 
     else:
         audit.warning(
