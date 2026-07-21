@@ -25,6 +25,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from barrikade import ArtifactDownloadError, PIPipeline
+from barrikade_mcp import broker
 
 
 log = logging.getLogger("barrikade_mcp")
@@ -200,6 +201,11 @@ async def detect_prompt_injection(
     if not text:
         raise ValueError("text must not be empty or whitespace-only.")
     return await anyio.to_thread.run_sync(_detect_sync, text, include_diagnostics)
+
+
+# The Registry pillar's credential broker registers its tool on this same
+# server: request_credentials beside detect_prompt_injection (Option-1 topology).
+broker.register(mcp)
 
 
 def main() -> None:
